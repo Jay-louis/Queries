@@ -1,0 +1,24 @@
+SELECT sto.location_id, sto.hu_id, sto.item_number, sto.actual_qty,
+CASE WHEN sto.location_id LIKE 'BS%' THEN 'SFS BULK'
+     WHEN sto.location_id LIKE 'SC%' OR sto.location_id LIKE 'SV%' THEN 'SEV BULK'
+     WHEN sto.location_id LIKE 'RCV%' THEN 'RCV'
+	 WHEN sto.location_id LIKE 'SEVSTAGE' THEN 'SEVSTAGE'
+	 WHEN sto.location_id LIKE 'RECSTAGE' THEN 'RECSTAGE'
+	 WHEN sto.location_id LIKE 'SFSSTAGE' THEN 'SFSSTAGE'
+	 WHEN sto.location_id LIKE 'RESTOCKER%' THEN 'RESTOCKER'
+	 WHEN sto.location_id LIKE 'TRANSIT01' THEN 'TRANSIT01'
+	 WHEN sto.location_id LIKE 'TRANSIT02' THEN 'TRANSIT02'
+	 WHEN sto.location_id LIKE 'TRANSIT03' THEN 'TRANSIT03'
+	 WHEN sto.location_id LIKE 'TRANSIT04' THEN 'TRANSIT04'
+	 WHEN sto.location_id LIKE 'TRANSIT05' THEN 'TRANSIT05'
+	 WHEN sto.location_id LIKE '1%' OR sto.location_id LIKE '7%' OR sto.location_id LIKE '9%' THEN 'CP DRIVER'
+     WHEN sto.location_id LIKE 'A%' THEN 'PICKMOD' END AS 'Building'
+	 --itm.style, itm.color, itm.size
+	-- ,type
+FROM t_stored_item sto WITH (NOLOCK)
+JOIN t_item_master itm WITH (NOLOCK)
+ON sto.item_number = itm.item_number
+WHERE sto.status = 'A'
+AND sto.type = '0'
+AND sto.hu_id IN () -- input LPN's here.
+GROUP BY sto.location_id, sto.hu_id, sto.item_number, sto.actual_qty, sto.status
