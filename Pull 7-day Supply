@@ -1,0 +1,60 @@
+-- determine items that have a demand greater than the quantity available in the pickmod and insert into a temptable
+SELECT  m.item_number, m.shopify_product_variant_id as vid--, ( Coalesce(SUM(d.demand), 0) - isnull(pm.PickInv,0)) AS need
+, isnull(pm.PickInv,0) as PickInv
+, isnull(blk.BulkInv,0) as BulkInv
+, isnull(sev.SevInv,0) as SevInv
+, isnull(fore.[7Days] ,0) as '7dayssupply'
+--INTO #TMP_REPLEN 
+FROM t_item_master m (nolock)
+--FIND total Units in PICK MOD inventory
+LEFT OUTER JOIN(SELECT item_number, sum(isnull(actual_qty,0)) AS PickInv
+FROM t_stored_item (nolock)
+WHERE type = '0' 
+AND (location_id LIKE 'AA%' OR location_id LIKE 'AB%' OR location_id LIKE 'AC%' OR location_id LIKE 'AD%') 
+AND status = 'A' 
+--AND item_number = '827088'
+GROUP BY item_number
+) pm
+ON m.item_number = pm.item_number
+--FIND total Units in BULK inventory
+    LEFT OUTER JOIN(SELECT item_number, sum(isnull(actual_qty,0)) AS BulkInv
+FROM t_stored_item sto(nolock)
+WHERE type = '0'  
+AND status = 'A' 
+AND (sto.location_id LIKE 'BS%'
+OR sto.location_id LIKE 'SC%'
+OR sto.location_id LIKE 'SV%'
+OR sto.location_id LIKE 'RCV%')
+--AND item_number = '827088'
+GROUP BY item_number
+) blk
+ON m.item_number = blk.item_number
+--FIND total Units in BULK inventory
+    LEFT OUTER JOIN(SELECT item_number, sum(isnull(actual_qty,0)) AS SevInv
+FROM t_stored_item sto(nolock)
+WHERE type = '0'  
+AND status = 'A' 
+AND --(sto.location_id LIKE 'BS%'
+( sto.location_id LIKE 'SC%'
+OR sto.location_id LIKE 'SV%')
+--OR sto.location_id LIKE 'RCV%')
+--AND item_number = '827088'
+GROUP BY item_number
+) sev
+ON m.item_number = sev.item_number
+--find X days of supply
+LEFT OUTER JOIN
+(SELECT item_number, SUM(ord.qty / '2') AS '7Days' --dividing 14 days worth by 2 to get 7 days of supply
+FROM t_order_detail ord (nolock)
+INNER JOIN t_order orm (nolock)
+ON orm.order_number = ord.order_number
+WHERE orm.order_date >= GETDATE()-14 
+--AND ord.item_number = '328538'
+GROUP BY item_number) fore
+ON fore.item_number = m.item_number
+GROUP BY m.item_master_id, m.item_number, m.shopify_product_variant_id, pm.PickInv, fore.[7Days],blk.BulkInv, sev.SevInv
+--HAVING Coalesce(SUM(d.demand), 0) > 0
+--HAVING ( Coalesce(SUM(d.demand), 0) - isnull(pm.PickInv,0)) > 0
+--HAVING isnull(pm.PickInv,0) > isnull(fore.[7Days] ,0)
+ORDER BY m.shopify_product_variant_id,m.item_master_id
+--END 7 Days
