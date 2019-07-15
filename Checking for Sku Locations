@@ -1,0 +1,25 @@
+SELECT sto.location_id, sto.hu_id, sto.item_number, sto.actual_qty,
+CASE WHEN sto.location_id LIKE 'BS%' THEN 'SFS'
+     WHEN sto.location_id LIKE 'SC%' OR sto.location_id LIKE 'SV%' THEN 'SEVILLE'
+     WHEN sto.location_id LIKE 'RCV%' THEN 'RCV'
+	 WHEN sto.location_id IN ('RECSTAGE', 'SEVSTAGE', 'SFSSTAGE') THEN 'STAGING'
+	 WHEN sto.location_id LIKE 'RESTOCKER%' THEN 'BADGE'
+     WHEN sto.location_id LIKE 'A%' THEN 'PICKMOD' END AS 'Building'
+	 --itm.style, itm.color, itm.size
+	 ,type
+FROM t_stored_item sto WITH (NOLOCK)
+JOIN t_item_master itm WITH (NOLOCK)
+ON sto.item_number = itm.item_number
+WHERE sto.status = 'A'
+AND sto.type = '0'
+--AND (sto.location_id LIKE 'BS%'
+	--OR sto.location_id LIKE 'SC%'
+	--OR sto.location_id LIKE 'SV%'
+	--OR sto.location_id LIKE 'RCV%'
+	--OR sto.location_id LIKE 'SFSSTAGE'
+	--OR sto.location_id LIKE 'SEVSTAGE'
+	--OR sto.location_id LIKE 'RECSTAGE'
+	--OR sto.location_id LIKE 'RESTOCKER%'
+	--OR sto.location_id LIKE 'RCV%'
+	--OR sto.location_id LIKE 'A%')
+AND sto.item_number IN ('878735') --input sku here--
