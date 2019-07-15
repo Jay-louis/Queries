@@ -1,0 +1,17 @@
+--oc version 1 of demand simplified
+SELECT ord.item_number, 
+     (SUM(ord.qty) - ISNULL(SUM(pic.picked_quantity),0)) 
+    
+                    FROM t_order_detail ord (nolock)
+                    INNER JOIN t_order orm (nolock)
+                        ON orm.order_number = ord.order_number 
+                    LEFT OUTER JOIN t_pick_detail pic (nolock)
+                        ON orm.order_number = pic.order_number
+                        AND ord.item_number = pic.item_number
+                    WHERE orm.status IN('AUTOFAIL','IMPORTED','RATEFAIL','RATING','RELEASED')
+                    AND orm.order_type NOT IN ('RTV')
+                    AND ord.item_number --= '485586' -- testing with 1 item
+                    IN () -- input skus here
+                    GROUP BY ord.item_number
+                    HAVING (SUM(ord.qty) - ISNULL(SUM(pic.picked_quantity),0)) > 0
+--*******end demand
