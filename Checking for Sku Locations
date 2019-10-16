@@ -10,8 +10,7 @@ CASE WHEN sto.location_id LIKE 'BS%' THEN 'SFS'
 FROM t_stored_item sto WITH (NOLOCK)
 JOIN t_item_master itm WITH (NOLOCK)
 ON sto.item_number = itm.item_number
-WHERE sto.status = 'A'
-AND sto.type = '0'
+WHERE sto.type = '0'
 --AND (sto.location_id LIKE 'BS%'
 	--OR sto.location_id LIKE 'SC%'
 	--OR sto.location_id LIKE 'SV%'
