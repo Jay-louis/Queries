@@ -11,7 +11,12 @@ CASE WHEN sto.location_id LIKE 'BS%' THEN 'SFS BULK'
 	 WHEN sto.location_id LIKE 'TRANSIT03' THEN 'TRANSIT03'
 	 WHEN sto.location_id LIKE 'TRANSIT04' THEN 'TRANSIT04'
 	 WHEN sto.location_id LIKE 'TRANSIT05' THEN 'TRANSIT05'
-	 WHEN sto.location_id LIKE '1%' OR sto.location_id LIKE '7%' OR sto.location_id LIKE '9%' THEN 'CP DRIVER'
+	 WHEN sto.location_id LIKE 'TRANSIT06' THEN 'TRANSIT06'
+	 WHEN sto.location_id LIKE 'TRANSIT07' THEN 'TRANSIT07'
+	 WHEN sto.location_id LIKE 'TRANSIT08' THEN 'TRANSIT08'
+	 WHEN sto.location_id LIKE 'TRANSIT09' THEN 'TRANSIT09'
+	 WHEN sto.location_id LIKE 'TRANSIT10' THEN 'TRANSIT10'
+	 WHEN sto.location_id LIKE '1%' OR sto.location_id LIKE '7%' OR sto.location_id LIKE '9%'OR sto.location_id LIKE '8%' THEN 'CP DRIVER'
      WHEN sto.location_id LIKE 'A%' THEN 'PICKMOD' END AS 'Building'
 	 --itm.style, itm.color, itm.size
 	-- ,type
