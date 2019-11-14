@@ -1,10 +1,21 @@
 SELECT sto.location_id, sto.hu_id, sto.item_number, sto.actual_qty,
-CASE WHEN sto.location_id LIKE 'BS%' THEN 'SFS'
-     WHEN sto.location_id LIKE 'SC%' OR sto.location_id LIKE 'SV%' THEN 'SEVILLE'
+CASE WHEN sto.location_id LIKE 'BS%' THEN 'SFS BULK'
+     WHEN sto.location_id LIKE 'SC%' OR sto.location_id LIKE 'SV%' THEN 'SEV BULK'
      WHEN sto.location_id LIKE 'RCV%' THEN 'RCV'
 	 WHEN sto.location_id IN ('RECSTAGE', 'SEVSTAGE', 'SFSSTAGE') THEN 'STAGING'
-	 WHEN sto.location_id LIKE 'RESTOCKER%' THEN 'BADGE'
+	 WHEN sto.location_id LIKE 'RESTOCKER%' THEN 'RESTOCKER'
+	 WHEN sto.location_id LIKE 'REC-HOLD%' THEN 'REC-HOLD'
+	 WHEN sto.location_id LIKE '[1-9]%'  THEN 'BADGE'
+	 WHEN sto.location_id LIKE 'PICK%' THEN 'PICKCONVEYOR'
+	 WHEN sto.location_id LIKE 'PACK%' THEN 'PACKSTAGE'
+	 WHEN sto.location_id LIKE 'TRANSIT%' THEN 'TRANSIT'
+	 WHEN sto.location_id LIKE 'RTV%' THEn 'RTVADJ-SFS'
+	 WHEN sto.location_id LIKE 'EMPTYBOX%' THEN 'EMPTYBOX'
+	 WHEN sto.location_id LIKE 'LOSTLPNLOC' THEN 'LOSTLPNLOC'
+	 WHEN sto.location_id LIKE 'LOSTITMLOC' THEN 'LOSTITMLOC'
+	 WHEN sto.location_id LIKE 'C-%' THEN 'PICKMOD'
      WHEN sto.location_id LIKE 'A%' THEN 'PICKMOD' END AS 'Building'
+
 	 --itm.style, itm.color, itm.size
 	 ,type
 FROM t_stored_item sto WITH (NOLOCK)
@@ -21,4 +32,4 @@ WHERE sto.type = '0'
 	--OR sto.location_id LIKE 'RESTOCKER%'
 	--OR sto.location_id LIKE 'RCV%'
 	--OR sto.location_id LIKE 'A%')
-AND sto.item_number IN ('878735') --input sku here--
+AND sto.item_number IN ()
