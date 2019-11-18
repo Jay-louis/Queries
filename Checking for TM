@@ -1,0 +1,57 @@
+--CHECK FOR COMPLETE ORDERS in TM
+select orm.order_date, pic.order_number--, pic.item_number
+, sum(pic.planned_quantity) as 'Planned QTY', ISNULL(a.TMInventory,0) as TMQty, ISNULL(a.TMLocation,0) as TMLocation, a.TMTote
+,ISNULL(b.OtherInv,0) as OtherInventory ,b.OtherInvLocation as 'MU Location', b.MoreLocations as 'More MU Locations'
+from t_pick_detail pic(nolock)
+join t_order orm (nolock)
+on pic.order_number = orm.order_number
+left outer join (
+--inventory in TM
+select pic.order_number--, pic.item_number
+, sum(sto.actual_qty) as TMInventory, max(sto.location_id) as TMLocation, max(sto.hu_id) as TMTote
+from t_order orm(nolock)--from t_stored_item sto (nolock)
+join t_pick_detail pic(nolock)
+on orm.order_number = pic.order_number
+left outer join t_stored_item sto(nolock)
+ON pic.pick_id = sto.type
+where sto.location_id like 'PRS%'
+AND orm.status not in ('CANCELLED','SHIPPED', 'PACKED')
+AND pic.status not in ('CANCELLED')
+--AND cast(orm.order_date as date) > '2019-04-04'--change date range for active orders
+GROUP BY pic.order_number--, pic.item_number
+)a
+ON pic.order_number = a.order_number
+--and pic.item_number = a.item_number
+
+LEFT OUTER JOIN (
+
+select  orm.order_number, ISNULL(sum(sto.actual_qty),0) as OtherInv, max(sto.location_id) as OtherInvLocation
+,MIN(sto.location_id) as MoreLocations --det.item_number, det.planned_quantity, det.picked_quantity, sto.location_id, sto.hu_id
+from t_order orm(nolock)
+join t_pick_detail det (nolock)
+on orm.order_number = det.order_number
+left outer join t_stored_item sto (nolock)
+on det.pick_id = sto.type
+left outer join t_location loc(nolock)
+on sto.location_id = loc.location_id
+WHERE --cast(orm.order_date as date) = '2019-04-05'
+orm.status not in ('SHIPPED','CANCELLED','PACKED')
+AND det.status not in ('CANCELLED')
+AND sto.location_id NOT like 'PRS%'
+AND loc.type in ('E')
+AND orm.order_number NOT LIKE 'RTV%'
+group by orm.order_number--, det.item_number, det.planned_quantity, det.picked_quantity, sto.location_id, sto.hu_id, sto.actual_qty
+)b
+ON pic.order_number = b.order_number
+
+WHERE orm.status not in ('CANCELLED','SHIPPED', 'PACKED')
+AND pic.status not in ('CANCELLED')
+--AND cast(orm.order_date as date) <= '2019-11-01' --change date range for active orders
+--AND pic.order_number = '31322220'
+GROUP BY orm.order_date, pic.order_number--, pic.item_number
+,  a.TMInventory, a.TMLocation, a.TMTote
+,b.OtherInv  ,b.OtherInvLocation, b.MoreLocations
+ORDER BY a.TMLocation DESC
+--HAVING sum(pic.planned_quantity) = ISNULL(a.TMInventory,0) + ISNULL(b.OtherInv,0) --show orders ready to marry up
+--AND sum(pic.planned_quantity) = ISNULL(a.TMInventory,0)--perfect orders or comment out to show ALL orders in TM area
+--ORDER BY a.TMLocation
