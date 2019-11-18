@@ -49,3 +49,15 @@ WHERE --orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S')
 GROUP BY CAST(orm.order_date AS DATE), bklg.backlog, prob.ProblemOrders ,back.BacklogOrders,back.BackUnits
 HAVING back.BacklogOrders > 0 OR bklg.backlog > 0
 ORDER BY CAST(orm.order_date AS DATE)
+
+
+--BACKLOG--
+SELECT COUNT(DISTINCT orm.order_number) AS order_count
+     ,SUM(ord.qty) AS total_units
+FROM t_order orm WITH (NOLOCK)
+LEFT OUTER JOIN t_order_detail ord WITH (NOLOCK)
+     ON orm.wh_id = ord.wh_id
+     AND orm.order_number = ord.order_number
+WHERE orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S')
+     AND orm.order_type NOT IN ('RT','RTV','SM')
+     AND ord.qty > (ISNULL(ord.cancel_qty,0) + ISNULL(ord.bo_qty,0))
