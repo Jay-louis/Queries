@@ -1,0 +1,34 @@
+SELECT CAST(orm.order_date AS DATE) AS order_date
+  , orm.order_number
+  , tpd.item_number
+  , tpd.ilpn AS "ILPN"
+  , tpd.status AS "Status"
+  , tpd.planned_quantity AS "Planned Quantity"
+  , sti.location_id AS "Location"
+  , sti.hu_id AS "License Plate"
+  , sti.actual_qty
+FROM t_pick_detail tpd  WITH (NOLOCK)
+JOIN t_order orm WITH (NOLOCK)
+ON tpd.order_number = orm.order_number
+LEFT OUTER JOIN t_stored_item sti WITH (NOLOCK)
+ON tpd.item_number = sti.item_number
+WHERE-- orm.status NOT IN ('SHIPPED','PACKED','CANCELLED','LOADED','S')
+orm.order_number IN ('SO165782695') -- input orders here
+--AND CAST(orm.order_date as date) = '2019-05-21'
+AND sti.status = 'A'
+--AND (orm.carrier_scac LIKE 'FD%' OR orm.carrier_scac LIKE 'USPSE%' OR orm.carrier_code LIKE 'FD%' OR orm.carrier_code LIKE 'USPSE%')--
+AND (sti.location_id LIKE 'AA%'
+  OR sti.location_id LIKE 'AB%'
+  OR sti.location_id LIKE 'AC%'
+  OR sti.location_id LIKE 'AD%')
+AND sti.actual_qty > '0'
+GROUP BY CAST(orm.order_date AS DATE)
+  , orm.order_number
+  , tpd.item_number
+  , tpd.ilpn
+  , tpd.status
+  , tpd.planned_quantity
+  , sti.location_id
+  , sti.hu_id
+  , sti.actual_qty
+ORDER BY sti.actual_qty DESC
