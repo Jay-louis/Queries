@@ -1,9 +1,10 @@
 -- determine items that have a demand greater than the quantity available in the pickmod and insert into a temptable
-SELECT  m.item_number, m.shopify_product_variant_id as vid--, ( Coalesce(SUM(d.demand), 0) - isnull(pm.PickInv,0)) AS need
+SELECT  m.item_number--, ( Coalesce(SUM(d.demand), 0) - isnull(pm.PickInv,0)) AS need
 , isnull(pm.PickInv,0) as PickInv
 , isnull(blk.BulkInv,0) as BulkInv
 , isnull(sev.SevInv,0) as SevInv
 , isnull(fore.[7Days] ,0) as '7dayssupply'
+, m.shopify_product_variant_id as vid
 --INTO #TMP_REPLEN 
 FROM t_item_master m (nolock)
 --FIND total Units in PICK MOD inventory
