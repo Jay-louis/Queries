@@ -1,0 +1,13 @@
+SELECT DISTINCT(orm.order_number)
+          , orm.status
+FROM t_order orm WITH (NOLOCK)
+   JOIN t_import_order imp WITH (NOLOCK)
+        ON orm.order_number = imp.order_number
+WHERE (imp.carrier_code LIKE 'F%'
+OR imp.carrier_code LIKE 'USPSE%')
+AND orm.order_number NOT LIKE 'SO%'-- would like to change this to orm.order_type in ('ECOM')--OC 3/25/19
+AND orm.order_number NOT LIKE 'RTV%'
+AND orm.order_number NOT LIKE 'TO%'
+AND imp.dateTimeInserted  >= CAST(CONVERT(VARCHAR(10), GETDATE()-1, 101) + ' 13:00:00' AS DATETIME)
+AND imp.dateTimeInserted <= CAST(CONVERT(VARCHAR(10), GETDATE(), 101) + ' 13:00:00' AS DATETIME)
+ORDER BY orm.status
