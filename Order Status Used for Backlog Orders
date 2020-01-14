@@ -1,0 +1,17 @@
+--Could be used to determine if orders were completed in SPK. Also, the time they were completed.
+SELECT DISTINCT (orm.order_number) AS 'Order Number'
+, orm.status AS ' HJ Status'
+, CAST(orm.order_date AS date )"Order Date"
+, isnull(cfm.Matched_Date, Null) as "COFE Matched Date"
+FROM t_order AS orm WITH (NOLOCK)
+	LEFT OUTER JOIN OutCofeOrderMasterMatched cfm WITH(NOLOCK) 
+	ON orm.order_number = cfm.Order_Number
+	WHERE orm.status IN ('RELEASED',
+					 'IMPORTED',
+					 'RATING',
+					 'RATEFAIL',
+					 'RELEASING')
+					 AND orm.order_type not in ('RTV','RT','SM')
+AND cast(orm.order_date as date) = '2020-01-08' --date changeable
+--IF NULL, Orders are not complete yet.
+ORDER BY 4 desc, 2 desc
