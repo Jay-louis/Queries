@@ -1,0 +1,15 @@
+SELECT CAST(order_date as DATE) "Date", ord.status "Status", COUNT(DISTINCT ord.order_number) "Order Count", COUNT(pck.line_number) "Total Units"
+FROM t_order ord WITH(NOLOCK)
+LEFT JOIN t_order_detail pck WITH(NOLOCK) ON pck.order_number = ord.order_number
+WHERE ord.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S')
+AND ord.order_type NOT IN ('RT','RTV','SM')
+AND pck.qty > (ISNULL(pck.cancel_qty,0) + ISNULL(pck.bo_qty,0))
+GROUP BY CAST(order_date as DATE), ord.status
+ORDER BY CAST(order_date as DATE), ord.status
+
+SELECT COUNT(DISTINCT ord.order_number) "Order Count", COUNT(pck.line_number) "Total Units"
+FROM t_order ord WITH(NOLOCK)
+LEFT JOIN t_order_detail pck WITH(NOLOCK) ON pck.order_number = ord.order_number
+WHERE ord.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S')
+AND ord.order_type NOT IN ('RT','RTV','SM')
+AND pck.qty > (ISNULL(pck.cancel_qty,0) + ISNULL(pck.bo_qty,0))
