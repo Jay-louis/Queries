@@ -1,0 +1,7 @@
+SELECT tran_log_id, tran_type, description, CAST(end_tran_date as DATE) "Date",
+	   CAST(end_tran_time as time) "Time", employee_id, location_id, hu_id, location_id_2, hu_id_2,
+	   item_number, order_number
+FROM t_tran_log WITH(NOLOCK)
+WHERE order_number = '46892435' -- ADD or REMOVE Dashes to activate or deactivate lines --
+--WHERE hu_id = '' OR hu_id_2 = ''
+ORDER BY tran_log_id DESC
