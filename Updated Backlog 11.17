@@ -1,8 +1,8 @@
 --*****adding total orders BACKLOG with Social Media PLUS problem imports
 SELECT CAST(orm.order_date AS DATE) AS order_date
-	  ,ISNULL(back.BacklogOrders,0) AS 'Total Orders'--need new sub
+	  ,ISNULL(back.BacklogOrders,0) AS 'Order Count'--need new sub
       ,ISNULL(back.BackUnits,0) AS 'Total Units' --need new sub
-	  ,isnull(bklg.backlog,0) AS 'Social Media Orders'
+	  ,isnull(bklg.backlog,0) AS 'SM Orders'
 	  ,COUNT(DISTINCT orm.order_number) AS order_count
 	  ,isnull(prob.ProblemOrders,'0') AS 'Potential Problem Orders'
 FROM t_order orm WITH (NOLOCK)
