@@ -1,0 +1,8 @@
+SELECT tran_log_id, tran_type, description, CAST(end_tran_date as DATE) "Date",
+	   CAST(end_tran_time as time) "Time", trl.employee_id, emp.name "Employee Name", location_id, trl.hu_id, location_id_2, hu_id_2,
+	   item_number, order_number
+FROM t_tran_log trl WITH(NOLOCK)
+JOIN t_employee emp WITH(NOLOCK) ON emp.id = trl.employee_id or emp.id = trl.employee_id_2
+WHERE order_number = '48216556' -- Order Number Here --
+AND trl.tran_type IN ('320', '322')
+ORDER BY tran_log_id DESC
