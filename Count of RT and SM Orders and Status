@@ -1,0 +1,19 @@
+SELECT CAST(ord.order_date as DATE) "Order Date", ord.order_type, ord.order_number "Order Number", ord.ship_to_name "Ship Name", SUM(orm.qty) "Qty", ord.status "Status"
+FROM t_order ord WITH(NOLOCK)
+JOIN t_order_detail orm WITH(NOLOCK) ON ord.order_number = orm.order_number
+WHERE ord.order_type IN ('RT', 'SM')
+--AND CAST(ord.order_date as DATE) between '2019-11-03' and '2019-11-03'
+AND ord.status IN ('RELEASED', 'IMPORTED')
+AND orm.qty > (ISNULL(orm.cancel_qty,0) + ISNULL(orm.bo_qty,0))
+GROUP BY ord.order_date, ord.order_number, ord.ship_to_name, ord.status, ord.order_type
+ORDER BY ord.status, ord.order_type
+
+SELECT ord.status "Status", ord.order_type, COUNT(DISTINCT ord.order_number) "Order Number", SUM(orm.qty) "Qty"
+FROM t_order ord WITH(NOLOCK)
+LEFT OUTER JOIN t_order_detail orm WITH(NOLOCK) ON ord.order_number = orm.order_number
+WHERE ord.order_type IN ('RT', 'SM')
+AND orm.qty > (ISNULL(orm.cancel_qty,0) + ISNULL(orm.bo_qty,0))
+--AND CAST(ord.order_date as DATE) between '2019-11-03' and '2019-11-03'
+AND ord.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'PICKED')
+GROUP BY ord.status, ord.order_type
+ORDER BY ord.status, ord.order_type
