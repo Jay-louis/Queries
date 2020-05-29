@@ -1,0 +1,16 @@
+SELECT a.[Order Number], pdt.item_number, a.Description, a.[Employee ID], a.[Ship Name], a.[Address 1], a.[Address 2], a.City,
+	   a.State, a.Zip, a.Country, a.Carrier
+FROM t_pick_detail pdt WITH(NOLOCK)
+JOIN(
+SELECT trl.order_number "Order Number", trl.employee_id "Employee ID", ord.ship_to_name "Ship Name" , ord.ship_to_addr1 "Address 1", ord.ship_to_addr2 "Address 2",
+	   ord.ship_to_city "City", ord.ship_to_state "State", ord.ship_to_zip "Zip", ord.ship_to_country_code "Country", ord.carrier "Carrier", itm.item_number AS "Item", itm.description "Description"
+FROM t_tran_log trl WITH(NOLOCK)
+LEFT JOIN t_order ord WITH(NOLOCK) ON ord.order_number = trl.order_number
+LEFT JOIN t_pick_detail pdt WITH(NOLOCK) ON pdt.order_number = trl.order_number
+LEFT JOIN t_item_master itm WITH(NOLOCK) ON pdt.item_number = itm.item_number
+WHERE trl.tran_type = '317'
+GROUP BY trl.employee_id, trl.order_number, ord.ship_to_addr1, ord. ship_to_name, ord.ship_to_addr2, ord.ship_to_city, ord.ship_to_zip
+	     , ord.ship_to_country_code, ord.carrier, ord.ship_to_state, itm.item_number, itm.description)a ON pdt.order_number = a.[Order Number] and a.Item = pdt.item_number
+WHERE pdt.ilpn IN () -- ILPN Here--
+GROUP BY a.[Order Number], a.Item, a.Description, a.[Employee ID], a.[Ship Name], a.[Address 1], a.[Address 2], a.City,
+		 a.State, a.Zip, a.Country, a.Carrier, pdt.item_number
