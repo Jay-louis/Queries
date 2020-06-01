@@ -1,11 +1,12 @@
-SELECT sto.location_id, sto.hu_id, sto.item_number, sto.actual_qty,
+SELECT sto.location_id, sto.hu_id, sto.item_number, sto.actual_qty, itm.size,
 CASE WHEN sto.location_id LIKE 'BS%' THEN 'SFS BULK'
      WHEN sto.location_id LIKE 'SC%' OR sto.location_id LIKE 'SV%' THEN 'SEV BULK'
      WHEN sto.location_id LIKE 'RCV%' THEN 'RCV'
-	 WHEN sto.location_id IN ('RECSTAGE', 'SEVSTAGE', 'SFSSTAGE') THEN 'STAGING'
+	 WHEN sto.location_id IN ('RECSTAGE', 'SEVSTAGE', 'SFSSTAGE') OR sto.location_id LIKE 'SEVILLE%' THEN 'STAGING'
 	 WHEN sto.location_id LIKE 'RESTOCKER%' THEN 'RESTOCKER'
 	 WHEN sto.location_id LIKE 'REC-HOLD%' THEN 'REC-HOLD'
-	 WHEN sto.location_id LIKE '[1-9]%'  THEN 'BADGE'
+	 WHEN sto.location_id LIKE '[1-9]%' OR sto.location_id LIKE 'CP%' THEN 'CP-BADGE'
+	 WHEN sto.location_id LIKE 'CP%' THEN 'CP-BADGE'
 	 WHEN sto.location_id LIKE 'PICK%' THEN 'PICKCONVEYOR'
 	 WHEN sto.location_id LIKE 'PACK%' THEN 'PACKSTAGE'
 	 WHEN sto.location_id LIKE 'TRANSIT%' THEN 'TRANSIT'
@@ -13,23 +14,17 @@ CASE WHEN sto.location_id LIKE 'BS%' THEN 'SFS BULK'
 	 WHEN sto.location_id LIKE 'EMPTYBOX%' THEN 'EMPTYBOX'
 	 WHEN sto.location_id LIKE 'LOSTLPNLOC' THEN 'LOSTLPNLOC'
 	 WHEN sto.location_id LIKE 'LOSTITMLOC' THEN 'LOSTITMLOC'
-	 WHEN sto.location_id LIKE 'C-%' THEN 'PICKMOD'
+	 WHEN sto.location_id LIKE 'INV1%' THEN 'INV1'
+	 WHEN sto.location_id LIKE 'INV2%' THEN 'INV2'
+	 WHEN sto.location_id LIKE 'OS-STAGE' THEN 'OS-STAGE'
+	 	 WHEN sto.location_id LIKE 'CART-AB%' THEN 'CART-AB'
+	 WHEN sto.location_id LIKE 'CART-AA%' THEN 'CART-AA'
+	 WHEN sto.location_id LIKE 'CART-AC%' THEN 'CART-AC'
+	 WHEN sto.location_id LIKE 'CART-AD%' THEN 'CART-AD'
      WHEN sto.location_id LIKE 'A%' THEN 'PICKMOD' END AS 'Building'
-
-	 --itm.style, itm.color, itm.size
 	 ,type
 FROM t_stored_item sto WITH (NOLOCK)
 JOIN t_item_master itm WITH (NOLOCK)
 ON sto.item_number = itm.item_number
 WHERE sto.type = '0'
---AND (sto.location_id LIKE 'BS%'
-	--OR sto.location_id LIKE 'SC%'
-	--OR sto.location_id LIKE 'SV%'
-	--OR sto.location_id LIKE 'RCV%'
-	--OR sto.location_id LIKE 'SFSSTAGE'
-	--OR sto.location_id LIKE 'SEVSTAGE'
-	--OR sto.location_id LIKE 'RECSTAGE'
-	--OR sto.location_id LIKE 'RESTOCKER%'
-	--OR sto.location_id LIKE 'RCV%'
-	--OR sto.location_id LIKE 'A%')
-AND sto.item_number IN ()
+AND sto.item_number IN ('1175474')
