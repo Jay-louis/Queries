@@ -10,6 +10,10 @@ CASE WHEN sto.location_id LIKE 'BS%' THEN 'SFS BULK'
 	 WHEN sto.location_id LIKE 'INV2%' THEN 'INV2'
 	 WHEN sto.location_id LIKE 'INV1%' THEN 'INV1'
 	 WHEN sto.location_id LIKE 'OS-STAGE' THEN 'OS-STAGE'
+	 WHEN sto.location_id LIKE 'CART-AB%' THEN 'CART-AB'
+	 WHEN sto.location_id LIKE 'CART-AA%' THEN 'CART-AA'
+	 WHEN sto.location_id LIKE 'CART-AC%' THEN 'CART-AC'
+	 WHEN sto.location_id LIKE 'CART-AD%' THEN 'CART-AD'
 	 WHEN sto.location_id LIKE '1%' OR sto.location_id LIKE '7%' OR sto.location_id LIKE '9%' OR sto.location_id LIKE '8%' OR sto.location_id LIKE 'CP%' THEN 'CP DRIVER'
      WHEN sto.location_id LIKE 'A%' THEN 'PICKMOD' END AS 'Location',
 	 CASE
