@@ -5,6 +5,7 @@ WHERE CAST(order_date As DATE) = '2020-06-14'
 AND order_number NOT LIKE 'TO%'
 AND order_number NOT LIKE 'RTV%'
 AND order_number NOT LIKE 'SO%'
+AND order_number NOT LIKE 'F%'
 
 SELECT MIN(order_number) "First OrderNumber", MAX(order_number) "Last Order Number"
 FROM t_order WITH (NOLOCK)
