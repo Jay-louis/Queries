@@ -1,6 +1,7 @@
 SELECT sto.location_id, sto.hu_id, sto.item_number, sto.actual_qty,
 CASE WHEN sto.location_id LIKE 'BS%' THEN 'SFS BULK'
      WHEN sto.location_id LIKE 'SC%' OR sto.location_id LIKE 'SV%' THEN 'SEV BULK'
+     WHEN sto.location_id LIKE 'RB%' THEN 'RIM'
      WHEN sto.location_id = 'RCVCONVEYOR' THEN 'RCVCONVEYOR'
      WHEN sto.location_id = 'RCVCONVEYOR-A' THEN 'RCVCONVEYOR-A'
      WHEN sto.location_id = 'RCVCONVEYOR-B' THEN 'RCVCONVEYOR-B'
