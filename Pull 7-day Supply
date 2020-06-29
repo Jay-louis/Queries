@@ -38,8 +38,8 @@ WHERE type = '0'
 AND status = 'A' 
 AND --(sto.location_id LIKE 'BS%'
 ( sto.location_id LIKE 'SC%'
-OR sto.location_id LIKE 'SV%')
---OR sto.location_id LIKE 'RCV%')
+OR sto.location_id LIKE 'SV%'
+OR sto.location_id LIKE 'RB%')
 --AND item_number = '827088'
 GROUP BY item_number
 ) sev
