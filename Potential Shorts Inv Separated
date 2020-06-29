@@ -20,7 +20,7 @@ left outer join (
     select sum(sto.actual_qty) as inventory, sto.item_number
     from t_stored_item sto(nolock)
     where sto.type = '0'
-    and sto.status = 'A'
+    --and sto.status = 'A'
     GROUP BY sto.item_number
     )inv
 on det.item_number = inv.item_number
@@ -31,7 +31,7 @@ SELECT item_number, sum(isnull(actual_qty,0)) AS PickInv
 FROM t_stored_item (nolock)
 WHERE type = '0' 
 AND (location_id LIKE 'AA%' OR location_id LIKE 'AB%' OR location_id LIKE 'AC%' OR location_id LIKE 'AD%') 
-AND status = 'A' 
+--AND status = 'A' 
 --AND item_number = '827088'
 GROUP BY item_number
 ) pm
@@ -43,7 +43,7 @@ SELECT item_number, sum(isnull(actual_qty,0)) AS "BulkInv"
 FROM t_stored_item (nolock)
 WHERE type = '0' 
 AND (location_id LIKE 'BS%') 
-AND status = 'A' 
+--AND status = 'A' 
 --AND item_number = '827088'
 GROUP BY item_number
 ) bs
@@ -57,7 +57,7 @@ WHERE type = '0'
 AND (location_id LIKE 'SC%'
 OR location_id LIKE 'SV%'
 OR location_id LIKE 'RB%') 
-AND status = 'A' 
+--AND status = 'A' 
 --AND item_number = '827088'
 GROUP BY item_number
 ) scrb
@@ -65,9 +65,9 @@ ON det.item_number = scrb.item_number
 
 WHERE orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S')
       AND orm.order_type NOT IN ('RT','RTV','SM')
-	  --AND orm.order_number = '55018185'
-	  --AND CAST(orm.order_date as date) <= '2020-06-26' -- update date focusing on
-      AND cast(orm.order_date as date) > getdate() - 5
+      --AND orm.order_number = '55018185'
+      AND CAST(orm.order_date as date) <= '2020-06-26' -- update date focusing on
+      --AND cast(orm.order_date as date) > getdate() - 5
       --AND det.item_number = '665190'
 GROUP BY orm.order_date, orm.order_number, det.item_number, det.qty, isnull(inv.inventory,0), pick.order_number, pick.item_number, pick.status, pick.NotPicked, pm.PickInv, bs.BulkInv
 	    ,scrb.SC_RBInv
