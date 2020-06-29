@@ -10,7 +10,8 @@ CASE WHEN sto.location_id LIKE 'BS%' THEN 'SFS BULK'
 	 WHEN sto.location_id LIKE 'PICK%' THEN 'PICKCONVEYOR'
 	 WHEN sto.location_id LIKE 'PACK%' THEN 'PACKSTAGE'
 	 WHEN sto.location_id LIKE 'TRANSIT%' THEN 'TRANSIT'
-	 WHEN sto.location_id LIKE 'RTV%' THEn 'RTVADJ-SFS'
+	 WHEN sto.location_id LIKE 'RTV%' THEN 'RTVADJ-SFS'
+	 WHEN sto.location_id LIKE 'RB%' THEN 'RIM'
 	 WHEN sto.location_id LIKE 'EMPTYBOX%' THEN 'EMPTYBOX'
 	 WHEN sto.location_id LIKE 'LOSTLPNLOC' THEN 'LOSTLPNLOC'
 	 WHEN sto.location_id LIKE 'LOSTITMLOC' THEN 'LOSTITMLOC'
@@ -28,4 +29,4 @@ FROM t_stored_item sto WITH (NOLOCK)
 JOIN t_item_master itm WITH (NOLOCK)
 ON sto.item_number = itm.item_number
 WHERE sto.type = '0'
-AND sto.item_number IN ('1501140')
+AND sto.item_number IN ('790377')
