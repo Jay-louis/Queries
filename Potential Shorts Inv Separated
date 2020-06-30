@@ -72,7 +72,9 @@ AND (location_id LIKE 'CP%'
 OR location_id LIKE 'OS%'
 OR location_id LIKE 'RCV%'
 OR location_id LIKE 'RESTOCKER%'
-OR location_id LIKE 'CART%') 
+OR location_id LIKE 'CART%'
+OR location_id LIKE 'SFS%'
+OR location_id LIKE 'REC%') 
 --AND status = 'A' 
 --AND item_number = '827088'
 GROUP BY item_number
