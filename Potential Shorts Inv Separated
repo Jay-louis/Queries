@@ -74,7 +74,8 @@ OR location_id LIKE 'RCV%'
 OR location_id LIKE 'RESTOCKER%'
 OR location_id LIKE 'CART%'
 OR location_id LIKE 'SFS%'
-OR location_id LIKE 'REC%') 
+OR location_id LIKE 'REC%'
+OR location_id LIKE '[1-9]%') 
 --AND status = 'A' 
 --AND item_number = '827088'
 GROUP BY item_number
@@ -84,7 +85,7 @@ ON det.item_number = stg.item_number
 WHERE orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S')
       AND orm.order_type NOT IN ('RT','RTV','SM')
 	  --AND orm.order_number = '54965358'
-	  AND CAST(orm.order_date as date) = '2020-06-27' -- update date focusing on
+	  --AND CAST(orm.order_date as date) = '2020-07-24' -- update date focusing on
       --AND cast(orm.order_date as date) > getdate() - 5
       --AND det.item_number = '665190'
 GROUP BY orm.order_date, orm.order_number, det.item_number, det.qty, isnull(inv.inventory,0), pick.order_number, pick.item_number, pick.status, pick.NotPicked, pm.PickInv, bs.BulkInv
