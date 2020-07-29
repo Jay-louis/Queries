@@ -14,6 +14,6 @@ LEFT OUTER JOIN t_order_detail orm WITH(NOLOCK) ON ord.order_number = orm.order_
 WHERE ord.order_type IN ('RT', 'SM')
 AND orm.qty > (ISNULL(orm.cancel_qty,0) + ISNULL(orm.bo_qty,0))
 --AND CAST(ord.order_date as DATE) between '2019-11-03' and '2019-11-03'
-AND ord.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'PICKED')
+AND ord.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'PICKED','PROCESSING, 'SHIPPING')
 GROUP BY ord.status, ord.order_type
 ORDER BY ord.status, ord.order_type
