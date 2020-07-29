@@ -29,7 +29,7 @@ AND status = 'A'
 GROUP BY item_number
 ) pm
 ON det.item_number = pm.item_number
-WHERE orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S')
+WHERE orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S','PROCESSING, 'SHIPPING')
       AND orm.order_type NOT IN ('RT','RTV','SM')
       AND cast(orm.order_date as date) > getdate() - 5
       --AND det.item_number = '665190'
