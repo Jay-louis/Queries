@@ -12,7 +12,7 @@ LEFT OUTER JOIN (select cast(convert(char(11),order_date, 113) as datetime) as B
       FROM t_order ormn (nolock)
 	  LEFT OUTER JOIN t_order_detail ord WITH (NOLOCK)
       ON ormn.order_number = ord.order_number
-	  WHERE ormn.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'PROCESSING')
+	  WHERE ormn.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S','PROCESSING, 'SHIPPING')
       AND ormn.order_type NOT IN ('RT','RTV','SM')
       AND ord.qty > (ISNULL(ord.cancel_qty,0) + ISNULL(ord.bo_qty,0))
 	  group by cast(convert(char(11), order_date, 113) as datetime)
@@ -23,7 +23,7 @@ LEFT OUTER JOIN (select cast(convert(char(11),order_date, 113) as datetime) as B
 LEFT outer join (select cast(convert(char(11), order_date, 113) as datetime) as orderdate
 	   ,count(distinct order_number) as backlog
 			from t_order (nolock)
-			where status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'PROCESSING')
+			where status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S','PROCESSING, 'SHIPPING')
 			and order_type IN ('SM')
 			group by cast(convert(char(11), order_date, 113) as datetime)
 			)bklg
@@ -58,6 +58,6 @@ FROM t_order orm WITH (NOLOCK)
 LEFT OUTER JOIN t_order_detail ord WITH (NOLOCK)
      ON orm.wh_id = ord.wh_id
      AND orm.order_number = ord.order_number
-WHERE orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'PROCESSING')
+WHERE orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S','PROCESSING, 'SHIPPING'')
      AND orm.order_type NOT IN ('RT','RTV','SM')
      AND ord.qty > (ISNULL(ord.cancel_qty,0) + ISNULL(ord.bo_qty,0))
