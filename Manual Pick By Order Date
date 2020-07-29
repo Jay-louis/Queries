@@ -12,7 +12,7 @@ JOIN t_order orm WITH (NOLOCK)
 ON tpd.order_number = orm.order_number
 LEFT OUTER JOIN t_stored_item sti WITH (NOLOCK)
 ON tpd.item_number = sti.item_number
-WHERE orm.status NOT IN ('SHIPPED','PACKED','CANCELLED','LOADED','S')
+WHERE orm.status NOT IN ('SHIPPED','PACKED','CANCELLED','LOADED','S', PROCESSING', 'SHIPPING')
 AND orm.order_number NOT LIKE 'RTV%'
 AND orm.order_number NOT LIKE 'TO%'
 AND orm.order_number NOT LIKE 'SO%'
