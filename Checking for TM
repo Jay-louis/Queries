@@ -15,7 +15,7 @@ on orm.order_number = pic.order_number
 left outer join t_stored_item sto(nolock)
 ON pic.pick_id = sto.type
 where sto.location_id like 'PRS%'
-AND orm.status not in ('CANCELLED','SHIPPED', 'PACKED')
+AND orm.status not in ('CANCELLED','SHIPPED', 'PACKED', 'PROCESSING', 'SHIPPING')
 AND pic.status not in ('CANCELLED')
 --AND cast(orm.order_date as date) > '2019-04-04'--change date range for active orders
 GROUP BY pic.order_number--, pic.item_number
@@ -35,7 +35,7 @@ on det.pick_id = sto.type
 left outer join t_location loc(nolock)
 on sto.location_id = loc.location_id
 WHERE --cast(orm.order_date as date) = '2019-04-05'
-orm.status not in ('SHIPPED','CANCELLED','PACKED')
+orm.status not in ('SHIPPED','CANCELLED','PACKED', 'PROCESSING', 'SHIPPING')
 AND det.status not in ('CANCELLED')
 AND sto.location_id NOT like 'PRS%'
 AND loc.type in ('E')
