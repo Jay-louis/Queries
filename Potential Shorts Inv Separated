@@ -82,7 +82,7 @@ GROUP BY item_number
 ) stg
 ON det.item_number = stg.item_number
 
-WHERE orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S')
+WHERE orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S','PROCESSING, 'SHIPPING')
       AND orm.order_type NOT IN ('RT','RTV','SM')
 	  --AND orm.order_number = '54965358'
 	  --AND CAST(orm.order_date as date) = '2020-07-24' -- update date focusing on
