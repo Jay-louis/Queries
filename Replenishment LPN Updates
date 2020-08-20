@@ -1,7 +1,20 @@
-SELECT sto.location_id, sto.hu_id, sto.item_number, sto.actual_qty,
+SELECT a.*, CASE WHEN a.Location LIKE'RCV%' OR a.Location LIKE '%STAGE'
+					  OR a.Location LIKE  'RESTOCKER%'
+					  OR a.Location LIKE  '%TRANS%'
+					  OR a.Location LIKE  'INV%'
+					  OR a.Location LIKE  'OS%'
+					  OR a.Location LIKE  'CART%'
+					  OR a.Location = 'CP DRIVER' THEN 'In Process'
+
+				 WHEN a.Location = 'SFS BULK' THEN 'Not Pulled'
+				 WHEN a.Location = 'PICKMOD' THEN 'Done'
+				 ELSE 'Unknown' END AS 'Status'
+
+FROM 
+
+(SELECT sto.location_id, sto.hu_id, sto.item_number, sto.actual_qty,
 CASE WHEN sto.location_id LIKE 'BS%' THEN 'SFS BULK'
      WHEN sto.location_id LIKE 'SC%' OR sto.location_id LIKE 'SV%' THEN 'SEV BULK'
-     WHEN sto.location_id LIKE 'RB%' THEN 'RIM'
      WHEN sto.location_id = 'RCVCONVEYOR' THEN 'RCVCONVEYOR'
      WHEN sto.location_id = 'RCVCONVEYOR-A' THEN 'RCVCONVEYOR-A'
      WHEN sto.location_id = 'RCVCONVEYOR-B' THEN 'RCVCONVEYOR-B'
@@ -31,5 +44,5 @@ ON sto.item_number = itm.item_number
 WHERE sto.status = 'A'
 AND sto.type = '0'
 AND sto.hu_id IN () -- input LPN's here.
-GROUP BY sto.location_id, sto.hu_id, sto.item_number, sto.actual_qty, itm.size
+GROUP BY sto.location_id, sto.hu_id, sto.item_number, sto.actual_qty, itm.size)a
 ORDER BY location_id ASC
