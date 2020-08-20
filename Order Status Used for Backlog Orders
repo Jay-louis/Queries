@@ -9,7 +9,7 @@ FROM t_order AS orm WITH(NOLOCK)
 	ON orm.order_number = cfm.Order_Number
 	JOIN t_order_detail pck WITH(NOLOCK)
 	ON pck.order_number = orm.order_number
-	WHERE orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S')
+	WHERE orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'SHIPPING', 'PROCESSING')
 					 AND orm.order_type not in ('RTV','RT','SM')
 AND CAST(orm.order_date as date) = '2020-02-12' --date changeable
 AND pck.qty > (ISNULL(pck.cancel_qty,0) + ISNULL(pck.bo_qty,0))
