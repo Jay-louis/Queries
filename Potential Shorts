@@ -42,15 +42,16 @@ pm_qty + bs_qty + scrb_qty + stg_qty total_qty from
   OR location_id LIKE 'SFS%'
   OR location_id LIKE 'REC%'
   OR location_id LIKE 'TRANS%'
-  OR location_id LIKE 'INV%')
+  OR location_id LIKE 'INV%'
+  OR location_id LIKE '[1-9]%')
   AND stg.item_number = d.item_number
   GROUP BY item_number
  ),0) stg_qty
 from t_order o (nolock)
 join t_order_detail d (nolock) on d.order_number = o.order_number
 join t_pick_detail p (nolock) on p.order_number = o.order_number and p.line_number = d.line_number and p.item_number = d.item_number and p.status not in ('CANCELLED')
-where cast(order_date as date) >= '2020-08-08' and o.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'PROCESSING', 'SHIPPING') 
-and wcs_status in ('R', 'M', 'P', 'S', 'C', 'A')
+where cast(order_date as date) >= '2020-08-10' and o.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'PROCESSING', 'SHIPPING') 
+--and wcs_status in ('R', 'M', 'P', 'S', 'C', 'A')
 group by o.order_number, d.item_number) a
 where (pm_qty + bs_qty + scrb_qty + stg_qty) = 0 and (order_qty - picked_qty) > 0
 order by item_number, order_number
