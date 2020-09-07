@@ -43,7 +43,9 @@ pm_qty + bs_qty + scrb_qty + stg_qty total_qty from
   OR location_id LIKE 'REC%'
   OR location_id LIKE 'TRANS%'
   OR location_id LIKE 'INV%'
-  OR location_id LIKE '[1-9]%')
+  OR location_id LIKE '[1-9]%'
+  OR location_id LIKE 'RIM%'
+  OR location_id LIKE 'SEV%')
   AND stg.item_number = d.item_number
   GROUP BY item_number
  ),0) stg_qty
