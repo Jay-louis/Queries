@@ -1,19 +1,36 @@
-SELECT CAST(ord.order_date as DATE) "Order Date", ord.order_type, ord.order_number "Order Number", ord.ship_to_name "Ship Name", SUM(orm.qty) "Qty", ord.status "Status"
+SELECT a.[Order Date], a.order_type, a.[Order Number], a.[Ship Name], a.Qty as "total_qty", ISNULL(SUM(pdt.picked_quantity), '0') "picked_qty", ISNULL(COUNT(t.matched), '0') "matched_qty", a.Status
+, CASE WHEN a.Qty = ISNULL(SUM(pdt.picked_quantity), '0') and ISNULL(SUM(pdt.picked_quantity), '0') =  ISNULL(COUNT(t.matched), '0') THEN 'Complete' ELSE 'In Process' END as 'Progess'
+FROM
+(SELECT CAST(ord.order_date as DATE) "Order Date", ord.order_type, ord.order_number "Order Number", ord.ship_to_name "Ship Name", SUM(orm.qty) "Qty",
+ ord.status "Status"
 FROM t_order ord WITH(NOLOCK)
 JOIN t_order_detail orm WITH(NOLOCK) ON ord.order_number = orm.order_number
-WHERE ord.order_type IN ('RT', 'SM')
+WHERE ord.order_type IN ('SM')
 --AND CAST(ord.order_date as DATE) between '2019-11-03' and '2019-11-03'
 AND ord.status IN ('RELEASED', 'IMPORTED')
 AND orm.qty > (ISNULL(orm.cancel_qty,0) + ISNULL(orm.bo_qty,0))
-GROUP BY ord.order_date, ord.order_number, ord.ship_to_name, ord.status, ord.order_type
-ORDER BY ord.status, ord.order_type
+GROUP BY ord.order_date, ord.order_number, ord.ship_to_name, ord.status, ord.order_type)a
+LEFT JOIN
+(SELECT ISNULL(COUNT(tr.tran_qty), '0') as "matched", tr.order_number, tr.item_number, tr.tran_log_id
+FROM t_tran_log tr WITH(NOLOCK)
+WHERE tran_type = '610'
+GROUP BY order_number, item_number, tran_type, tran_log_id)t ON t.order_number = a.[Order Number]
 
-SELECT ord.status "Status", ord.order_type, COUNT(DISTINCT ord.order_number) "Order Number", SUM(orm.qty) "Qty"
+LEFT JOIN t_pick_detail pdt WITH(NOLOCK) ON a.[Order Number] = pdt.order_number and t.item_number = pdt.item_number
+GROUP BY a.[Order Number], a.[Order Date], a.order_type, a.[Ship Name], a.Qty, a.Status, t.matched
+ORDER BY [Order Date] ASC, Status ASC
+
+
+
+SELECT b.*
+FROM
+(SELECT ord.status "Status", ord.order_type, COUNT(DISTINCT ord.order_number) "Order Number", SUM(orm.qty) "Qty"
 FROM t_order ord WITH(NOLOCK)
 LEFT OUTER JOIN t_order_detail orm WITH(NOLOCK) ON ord.order_number = orm.order_number
-WHERE ord.order_type IN ('RT', 'SM')
+WHERE ord.order_type IN ('SM')
 AND orm.qty > (ISNULL(orm.cancel_qty,0) + ISNULL(orm.bo_qty,0))
 --AND CAST(ord.order_date as DATE) between '2019-11-03' and '2019-11-03'
-AND ord.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'PICKED','PROCESSING, 'SHIPPING')
-GROUP BY ord.status, ord.order_type
-ORDER BY ord.status, ord.order_type
+AND ord.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'PICKED', 'PROCESSING', 'SHIPPING')
+GROUP BY ord.status, ord.order_type)b
+LEFT JOIN t_pick_detail pdt WITH(NOLOCK) ON  b.[Order Number] = pdt.order_number
+GROUP BY b.[Order Number], b.order_type, b.Qty, b.Status
