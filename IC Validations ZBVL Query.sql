@@ -72,7 +72,7 @@ WHERE (sto.type = '0' -- All Selling Inventory
   AND UPPER(location_id) NOT LIKE '%DAM%'
   AND (location_id NOT LIKE 'SHIP-[0-9][0-9]-STG%')
   AND location_id NOT LIKE 'SHIP%'
-  AND location_id NOT LIKE 'PICK%'
+  AND location_id NOT LIKE 'PICKCONVEYOR%'
   AND location_id NOT LIKE '%PRS%'
   AND stg.item_number = d.item_number
   GROUP BY item_number
@@ -89,7 +89,7 @@ WHERE (sto.type = '0' -- All Selling Inventory
   AND UPPER(location_id) NOT LIKE '%DAM%'
   AND (location_id NOT LIKE 'SHIP-[0-9][0-9]-STG%')
   AND location_id NOT LIKE 'SHIP%'
-  AND location_id NOT LIKE 'PICK%'
+  AND location_id NOT LIKE 'PICKCONVEYOR%'
   AND location_id NOT LIKE '%PRS%')
   AND stg.item_number = d.item_number
   GROUP BY item_number
@@ -120,7 +120,7 @@ WHERE (sto.type = '0' -- All Selling Inventory
   AND UPPER(location_id) NOT LIKE '%DAM%'
   AND (location_id NOT LIKE 'SHIP-[0-9][0-9]-STG%')
   AND location_id NOT LIKE 'SHIP%'
-  AND location_id NOT LIKE 'PICK%'
+  AND location_id NOT LIKE 'PICKCONVEYOR%'
   AND location_id NOT LIKE '%PRS%'
   AND location_id NOT LIKE 'CP%'
   AND location_id NOT LIKE 'INV%'
