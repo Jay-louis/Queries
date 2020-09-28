@@ -17,6 +17,10 @@ SELECT sto.location_id
            WHEN sto.location_id LIKE 'RTV%' THEn 'RTVADJ-SFS'
            WHEN sto.location_id LIKE 'LOSTITMLOC' THEn 'LOSTITMLOC'
            WHEN sto.location_id LIKE 'LOSTLPNLOC' THEn 'LOSTLPNLOC'
+		   WHEN sto.location_id LIKE 'RB%' THEn 'RIM'
+		   WHEN sto.location_id LIKE 'INVSTAGE%' THEN 'INVSTAGE'
+		   WHEN sto.location_id LIKE 'PHOTOLAB%' THEN 'PHOTOLAB'
+		   WHEN sto.location_id LIKE 'RMA%' THEN 'RMA'
            WHEN sto.location_id LIKE 'A%' THEN 'PICKMOD' END    AS 'Building'
      , sto.type
      , CASE
@@ -53,7 +57,8 @@ WHERE (sto.type = '0' -- All Selling Inventory
         AND sto.location_id NOT LIKE 'RTV%'
         AND sto.location_id NOT IN
             ('SevilleDamages', 'QCSAMPLE-STAGE', 'LOSTITMLOC', 'FTL01', 'INVALIDSTG',
-              'PROBRESSTG', 'PROMO1-STG', 'PACKRES')))
+             'PROBRESSTG', 'PROMO1-STG')) 
+	OR (sto.type < '0' AND sto.location_id = 'RMA' AND sto.hu_id is null))
   AND sto.item_number IN (select distinct item_number from
 (select order_number, item_number, order_qty, picked_qty, order_qty - picked_qty qty_needed, all_qty AS all_qty, bad_qty, bad_qty2, good_qty from
 (select o.order_number,
@@ -72,7 +77,7 @@ WHERE (sto.type = '0' -- All Selling Inventory
   AND UPPER(location_id) NOT LIKE '%DAM%'
   AND (location_id NOT LIKE 'SHIP-[0-9][0-9]-STG%')
   AND location_id NOT LIKE 'SHIP%'
-  AND location_id NOT LIKE 'PICKCONVEYOR%'
+  AND location_id NOT LIKE 'PICK%'
   AND location_id NOT LIKE '%PRS%'
   AND stg.item_number = d.item_number
   GROUP BY item_number
@@ -89,7 +94,7 @@ WHERE (sto.type = '0' -- All Selling Inventory
   AND UPPER(location_id) NOT LIKE '%DAM%'
   AND (location_id NOT LIKE 'SHIP-[0-9][0-9]-STG%')
   AND location_id NOT LIKE 'SHIP%'
-  AND location_id NOT LIKE 'PICKCONVEYOR%'
+  AND location_id NOT LIKE 'PICK%'
   AND location_id NOT LIKE '%PRS%')
   AND stg.item_number = d.item_number
   GROUP BY item_number
@@ -120,7 +125,7 @@ WHERE (sto.type = '0' -- All Selling Inventory
   AND UPPER(location_id) NOT LIKE '%DAM%'
   AND (location_id NOT LIKE 'SHIP-[0-9][0-9]-STG%')
   AND location_id NOT LIKE 'SHIP%'
-  AND location_id NOT LIKE 'PICKCONVEYOR%'
+  AND location_id NOT LIKE 'PICK%'
   AND location_id NOT LIKE '%PRS%'
   AND location_id NOT LIKE 'CP%'
   AND location_id NOT LIKE 'INV%'
@@ -140,5 +145,5 @@ and o.order_type IN ('SM', 'EO', 'ECOM')
 and wcs_status in ('R', 'M', 'P', 'S', 'C', 'A')
 group by o.order_number, d.item_number) a
 where (order_qty - picked_qty) > 0 and good_qty = 0 and (bad_qty + bad_qty2) > 0
-) a)
-ORDER BY location_id
+) a) -- Insert Cofe Pending SKUs
+order by location_id asc
