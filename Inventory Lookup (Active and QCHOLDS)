@@ -33,6 +33,6 @@ FROM t_stored_item sto WITH (NOLOCK)
 JOIN t_item_master itm WITH (NOLOCK)
 ON sto.item_number = itm.item_number
 WHERE sto.type IN ('0', '-1', '-85')
-AND sto.location_id NOT IN ('RMA', 'PHOTOLAB', 'LOSTLPNLOC', 'LOSTITMLOC', 'SevilleDamages',
-							'REC-HOLD', 'INVSTAGE', 'PACKRES' )
+AND sto.location_id NOT IN ( 'LOSTLPNLOC', 'LOSTITMLOC', 'SevilleDamages',
+							 'PACKRES' )
 AND sto.item_number IN ()-- input skus here
