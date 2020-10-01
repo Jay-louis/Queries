@@ -6,7 +6,7 @@ SELECT a.*, CASE WHEN a.Location LIKE'RCV%' OR a.Location LIKE '%STAGE'
 					  OR a.Location LIKE  'CART%'
 					  OR a.Location = 'CP DRIVER' THEN 'In Process'
 
-				 WHEN a.Location = 'SFS BULK' THEN 'Not Pulled'
+				 WHEN a.Location IN  ('SFS BULK', 'RIM BULK', 'SEV BULK' )THEN 'Not Pulled'
 				 WHEN a.Location = 'PICKMOD' THEN 'Done'
 				 ELSE 'Unknown' END AS 'Status'
 
@@ -14,6 +14,8 @@ FROM
 
 (SELECT sto.location_id, sto.hu_id, sto.item_number, sto.actual_qty,
 CASE WHEN sto.location_id LIKE 'BS%' THEN 'SFS BULK'
+	 WHEN sto.location_id LIKE 'RB%' THEN 'RIM BULK'
+	 WHEN sto.location_id = 'RIMSTAGE' THEN 'RIM STAGE'
      WHEN sto.location_id LIKE 'SC%' OR sto.location_id LIKE 'SV%' THEN 'SEV BULK'
      WHEN sto.location_id = 'RCVCONVEYOR' THEN 'RCVCONVEYOR'
      WHEN sto.location_id = 'RCVCONVEYOR-A' THEN 'RCVCONVEYOR-A'
@@ -24,7 +26,7 @@ CASE WHEN sto.location_id LIKE 'BS%' THEN 'SFS BULK'
 	 WHEN sto.location_id LIKE 'RECSTAGE' THEN 'RECSTAGE'
 	 WHEN sto.location_id LIKE 'SFSSTAGE' THEN 'SFSSTAGE'
 	 WHEN sto.location_id LIKE 'RESTOCKER%' THEN 'RESTOCKER'
-	 WHEN sto.location_id LIKE 'TRANSIT%' THEN 'TRANSIT'
+	 WHEN sto.location_id LIKE '%TRANS%' THEN 'TRANSIT'
 	 WHEN sto.location_id LIKE 'INV2%' THEN 'INV2'
 	 WHEN sto.location_id LIKE 'INV1%' THEN 'INV1'
 	 WHEN sto.location_id LIKE 'OS-STAGE' THEN 'OS-STAGE'
