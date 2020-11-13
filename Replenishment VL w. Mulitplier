@@ -1,3 +1,20 @@
+DECLARE @HJStart as DATE
+DECLARE @HJEnd  as DATE 
+DECLARE @CFStart as DATE
+DECLARE @CFEnd  as DATE
+DECLARE @proactive as INT
+DECLARE @building1 AS NVARCHAR(20)
+DECLARE @building2 AS NVARCHAR(20)
+
+DECLARE @multiplier AS INT
+SET @multiplier = '2'
+
+-- Input the date Ranges and Proactive Below instead of the end --
+SET @HJStart = '2020-11-06' /* <<< HJ Start Date*/ SET @HJEnd = '2020-11-12' /* <<< HJ End Date*/
+SET @CFStart = '2020-11-06' /* <<< COFE Start Date*/ SET @CFEnd = '2020-11-12' /* <<< COFE End Date*/
+SET @proactive = '0' -- Proactive Number --
+SET @building1 = 'BS-%' /* Parameter for Buildings */  SET @building2 = 'RB-%' --Example: Building1 = RB and Building 2 = RB Only RIM-- 
+
 select 
  e.item_number, e.order_qty, e.picked_qty, e.qty_needed, e.pm_qty, e.bs_qty, e.scrb_qty, e.stg_qty, e.total_qty,
  e.location_id, e.hu_id, e.item_number, e.actual_qty,
@@ -7,10 +24,11 @@ select
   when pm_qty < qty_needed then 'Urgent'
   when pm_qty = qty_needed then 'Demand'
   else 'Proactive' end) replen_status,
+   m.size,
  (case when location_id like 'RB-%' then 'RIM'
   when location_id like 'SV-%' or location_id like 'SC-%' then 'SEVILLE'
-  when location_id like 'BS-%' then 'SFS' end) building,
- m.size, m.style, m.color 
+  when location_id like 'BS-%' then 'SFS' end) building
+  --m.style, m.color 
  
 from 
  (
@@ -27,7 +45,7 @@ from
    from
    (
     select 
-     b.item_number, order_qty, picked_qty, b.qty_needed, pm_qty, bs_qty, scrb_qty, stg_qty, total_qty,
+     b.item_number, order_qty, picked_qty, (b.qty_needed)*@multiplier qty_needed, pm_qty, bs_qty, scrb_qty, stg_qty, total_qty,
 	 i.location_id, i.hu_id, i.actual_qty, i.status, i.type, FDE1,
 	 ROW_NUMBER () OVER ( PARTITION BY i.item_number ORDER BY i.item_number DESC, i.location_id ASC ) AS 'rowNumber'
     from
@@ -51,6 +69,7 @@ count(distinct (case when carrier_code = 'FDE1' then order_number end)) 'FDE1',
 		  WHERE type = '0'  
 		  AND (location_id LIKE 'AA%' OR location_id LIKE 'AB%' OR location_id LIKE 'AC%' OR location_id LIKE 'AD%') 
 		  AND pm.item_number = a1.item_number
+		  AND status = 'A'
 		  GROUP BY item_number
 		  ), 0) pm_qty,
 		 isnull((
@@ -99,9 +118,9 @@ left join t_pick_detail pkd (nolock) on pkd.order_number = ord.order_number and 
 left join t_import_order io (nolock) on io.order_number = ord.order_number and io.carrier_code = 'FDE1'
 		where 
 	   (
-		(cast(orm.order_date as date) between '2020-08-31' and '2020-08-31') -- General Date Range (ALL in HJ)
+		(cast(orm.order_date as date) between @HJStart and @HJEnd) -- General Date Range (ALL in HJ)
 		or 
-		(cast(orm.order_date as date) between '2020-08-31' and '2020-09-03' -- COFE Released Orders
+		(cast(orm.order_date as date) between @CFStart and @CFEnd -- COFE Released Orders
 	     and wcs_status in ('A', 'R', 'M', 'P', 'S', 'C')  --All Cofe
 		--and wcs_status in ('A') --Cofe Pending
 		--and wcs_status in ('R', 'M', 'P', 'S', 'C') --Cofe Active Pool
@@ -116,10 +135,10 @@ where order_qty - picked_qty > 0
 		) a
      where 
 	 (bs_qty > 0 or scrb_qty > 0) -- Bulk locations qty check (SFS only or include RB/SEV)
-	 and pm_qty - 1 < (order_qty - picked_qty) -- Change qty to check for proactive
+	 and pm_qty - @proactive < (order_qty - picked_qty) -- Change qty to check for proactive
 	  ) b
      join t_stored_item i (nolock) on i.item_number = b.item_number and i.type = '0' 
-	 AND (i.location_id LIKE 'BS-%') --or i.location_id like 'SC-%' or i.location_id like 'SV-%' or i.location_id like 'RB-%') -- Bulk locations (SFS only or include RB/SEV) 
+	 AND (i.location_id LIKE @building1  or i.location_id like @building2) -- Bulk locations (SFS only or include RB/SEV) 
 	 ) c
 	) d
 where (CASE
