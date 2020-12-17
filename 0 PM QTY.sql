@@ -1,6 +1,14 @@
+DECLARE @bld1 as NVARCHAR(25)
+SET @bld1 = 'BS-%'
+DECLARE @bld2 as NVARCHAR(25)
+SET @bld2 = 'BS-%'
+ 
  select 
- e.*, 
- (case when m.size = 'OS' then 'OS' else 'NOT OS' end) SFS, m.style, m.color, m.size, 
+ e.item_number, e.pm_qty, e.bs_qty, e.scrb_qty, e.stg_qty, e.total_qty, e.location_id, e.hu_id,
+ e.item_number as item_number2, e.actual_qty, 
+ (case when m.size = 'OS' then 'OS' else 'NOT OS' end) SFS,/* m.style, m.color,*/ m.size,
+ (CASE WHEN m.size LIKE '%' THEN 'Urgent' END) "replen_status",
+ 
   (case when location_id like 'RB-%' then 'RIM'
   when location_id like 'SV-%' or location_id like 'SC-%' then 'SEVILLE'
   when location_id like 'BS-%' then 'SFS' end) building from (
@@ -56,9 +64,8 @@ isnull((
 		 ),0) stg_qty
 from t_stored_item i (nolock)
 group by i.item_number) a
-where (scrb_qty > 0 or bs_qty > 0) and pm_qty = 0) b
+where (scrb_qty > 0 or bs_qty > 0) and pm_qty <= 5) b -- change as needed for pm qty
 join t_stored_item i (nolock) on i.item_number = b.item_number and i.type = '0' 
-AND (i.location_id LIKE 'BS-%' or i.location_id like 'SC-%' or i.location_id like 'SV-%' or i.location_id like 'RB-%'
-)) e -- Bulk locations (SFS only or include RB/SEV)
+AND (i.location_id LIKE @bld1 or i.location_id like @bld2)) e -- Bulk locations (SFS only or include RB/SEV)
 join t_item_master m (nolock) on m.item_number = e.item_number
 where rowNumber = 1 and stg_qty = 0
