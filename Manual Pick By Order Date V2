@@ -1,11 +1,11 @@
 DECLARE @mpdate AS DATE
-SET @mpdate = '2020-11-30' -- input mp date here --
+SET @mpdate = '2020-12-01' -- input mp date here --
 
 select * from
 (SELECT CAST(orm.order_date AS DATE) AS order_date
   , orm.order_number
   , sti.hu_id AS LPN
-  , sti.location_id AS location
+  , sti.location_id AS Location
   , tpd.pick_id
   , tpd.item_number
   , tpd.ilpn AS ilpn
