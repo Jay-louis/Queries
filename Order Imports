@@ -1,0 +1,8 @@
+SELECT CAST(DATEPART(HH, ord.dateTimeInserted) AS NVARCHAR) AS 'Todays Hour', COUNT(DISTINCT orm.order_number) AS 'Orders Imported', SUM(ord.qty) AS 'Units Imported'
+FROM t_import_order orm WITH(NOLOCK)
+INNER JOIN t_import_order_detail ord WITH(NOLOCK)
+  ON orm.order_number = ord.order_number
+WHERE CAST(orm.dateTimeInserted AS DATE) = CAST(GETDATE() AS DATE)
+AND orm.importStatus = 'P'
+GROUP BY DATEPART(HH, ord.dateTimeInserted)
+ORDER BY DATEPART(HH, ord.dateTimeInserted) DESC
