@@ -1,4 +1,8 @@
-select order_number, item_number, order_qty, picked_qty, order_qty - picked_qty qty_needed, where_else AS "Inv_QTY" from
+DECLARE @sdate as date
+DECLARE @edate as date
+SET @sdate = '2021-02-06'
+SET @edate = '2021-02-06'
+select a.order_number, o.order_date, item_number, order_qty, picked_qty, order_qty - picked_qty qty_needed, where_else AS "Inv_QTY" from
 (select o.order_number,
  d.item_number, 
  count(d.qty) order_qty, 
@@ -6,7 +10,7 @@ select order_number, item_number, order_qty, picked_qty, order_qty - picked_qty 
   isnull((
   SELECT sum(isnull(actual_qty,0)) AS else_qty
   FROM t_stored_item stg (nolock)
-  WHERE type IN ('0', '-1', '-85') 
+  WHERE type IN ('0') 
   AND location_id NOT LIKE 'LOST%'
   AND location_id NOT LIKE 'OUT%'
   AND location_id NOT LIKE 'PACKRES%'
@@ -17,15 +21,21 @@ select order_number, item_number, order_qty, picked_qty, order_qty - picked_qty 
   AND location_id NOT LIKE 'SHIP%'
   AND location_id NOT LIKE 'PICKCONVEYOR%'
   AND location_id NOT LIKE '%PRS%'
+  AND location_id NOT LIKE '%RMA%'
+  AND location_id NOT LIKE '%PHOTOLAB%'
+  AND location_id NOT LIKE '%RECSTAGE%'
+  AND location_id NOT LIKE '%REC-HOLD%'
+  AND location_id NOT LIKE '%PICKMODIC-STAGE%'
   AND stg.item_number = d.item_number
   GROUP BY item_number
  ),0) where_else
 from t_order o (nolock)
 join t_order_detail d (nolock) on d.order_number = o.order_number
 join t_pick_detail p (nolock) on p.order_number = o.order_number and p.line_number = d.line_number and p.item_number = d.item_number and p.status not in ('CANCELLED')
-where cast(order_date as date) >= '2020-09-16' and o.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'PROCESSING', 'SHIPPING', 'ERROR')
+where cast(order_date as date) between @sdate and @edate and o.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'PROCESSING', 'SHIPPING', 'ERROR')
 and o.order_type IN ('SM', 'EO', 'ECOM')
-and wcs_status in ('R', 'M', 'P', 'S', 'C', 'A')
+and wcs_status in ('R', 'M', 'P', 'S', 'A')
 group by o.order_number, d.item_number) a
+join t_order o (nolock) on o.order_number = a.order_number
 where (order_qty - picked_qty) > 0 and (where_else = '0')
-order by item_number, order_number
+order by o.order_date asc
