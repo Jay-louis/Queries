@@ -1,0 +1,28 @@
+declare @rownumber int
+set @rownumber = 1 --Number of lpns returned per item if exists
+select b.*, m.style, m.size from
+(select 
+  i.location_id original_location, i.hu_id original_hu_id, i.item_number, i.actual_qty, a.location_id replen_location_id, a.hu_id replen_hu_id, a.item_number "replen_item_number", a.actual_qty replen_actual_qty,
+ (case when a.location_id like 'RB%' then 'RIM'
+  when a.location_id like 'BS%' then 'SFS' end) Building,
+  ROW_NUMBER () OVER ( PARTITION BY i.item_number ORDER BY i.item_number DESC, i.location_id ASC ) AS 'rowNumber'
+from t_stored_item i (nolock)
+left join (
+select item_number, location_id, hu_id, actual_qty from t_stored_item t (nolock)
+where (location_id like 'BS%' or location_id like 'RB%') and type = 0
+and hu_id not in 
+(
+--- insert lpns below ---
+'LPN5126200'
+--- insert lpns above---
+)
+) a on a.item_number = i.item_number
+where i.hu_id in 
+( 
+--- insert lpns below ---
+'LPN7694164'
+--- insert lpns above---
+)
+) b
+join t_item_master m (nolock) on m.item_number = b.item_number
+where rowNumber <= @rownumber
