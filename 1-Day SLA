@@ -1,4 +1,4 @@
-SELECT DISTINCT(orm.order_number)
+SELECT count (DISTINCT orm.order_number)
           , orm.status
 FROM t_order orm WITH (NOLOCK)
    JOIN t_import_order imp WITH (NOLOCK)
@@ -8,6 +8,24 @@ OR imp.carrier_code LIKE 'USPSE%')
 AND orm.order_number NOT LIKE 'SO%'-- would like to change this to orm.order_type in ('ECOM')--OC 3/25/19
 AND orm.order_number NOT LIKE 'RTV%'
 AND orm.order_number NOT LIKE 'TO%'
+AND orm.order_type NOT LIKE 'SM%'
 AND imp.dateTimeInserted  >= CAST(CONVERT(VARCHAR(10), GETDATE()-1, 101) + ' 13:00:00' AS DATETIME)
-AND imp.dateTimeInserted <= CAST(CONVERT(VARCHAR(10), GETDATE(), 101) + ' 13:00:00' AS DATETIME)
-ORDER BY orm.status
+AND imp.dateTimeInserted <= CAST(CONVERT(VARCHAR(10), GETDATE(), 101) + ' 13:10:00' AS DATETIME)
+AND imp.importStatus not in ('E')
+group by orm.status
+SELECT orm.order_number
+          , orm.status, orm.order_date, orm.carrier_code, imp.carrier_code
+FROM t_order orm WITH (NOLOCK)
+   JOIN t_import_order imp WITH (NOLOCK)
+        ON orm.order_number = imp.order_number
+WHERE (imp.carrier_code LIKE 'F%'
+OR imp.carrier_code LIKE 'USPSE%')
+AND orm.order_number NOT LIKE 'SO%'-- would like to change this to orm.order_type in ('ECOM')--OC 3/25/19
+AND orm.order_number NOT LIKE 'RTV%'
+AND orm.order_number NOT LIKE 'TO%'
+AND orm.order_type NOT LIKE 'SM%'
+AND imp.dateTimeInserted  >= CAST(CONVERT(VARCHAR(10), GETDATE()-2, 101) + ' 13:00:00' AS DATETIME)
+AND imp.dateTimeInserted <= CAST(CONVERT(VARCHAR(10), GETDATE(), 101) + ' 13:10:00' AS DATETIME)
+AND imp.importStatus not in ('E')
+and orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'PROCESSING', 'SHIPPING')
+order by orm.order_date asc
