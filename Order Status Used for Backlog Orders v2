@@ -1,0 +1,40 @@
+DECLARE @odate AS DATE
+SET @odate = '2021-02-13' -- Change Date Here --
+
+
+SELECT count(DISTINCT orm.order_number) AS 'order_count'
+		  , ISNULL(COUNT(pck.line_number), 0) AS 'Pick QTY'
+          , orm.status
+FROM t_order orm WITH(NOLOCK)
+   JOIN t_import_order imp WITH(NOLOCK)
+        ON orm.order_number = imp.order_number
+   JOIN t_order_detail pck WITH(NOLOCK)
+		ON pck.order_number = orm.order_number
+WHERE orm.order_number NOT LIKE 'SO%'-- would like to change this to orm.order_type in ('ECOM')--OC 3/25/19
+AND orm.order_number NOT LIKE 'RTV%'
+AND orm.order_number NOT LIKE 'TO%'
+AND orm.order_type NOT LIKE 'SM%'
+AND imp.importStatus not in ('E')
+AND CAST(orm.order_date AS DATE) = @odate
+AND pck.qty > (ISNULL(pck.cancel_qty,0) + ISNULL(pck.bo_qty,0))
+group by orm.status
+
+SELECT orm.order_number, ISNULL(COUNT(pck.line_number), 0) AS 'Pick QTY'
+          , orm.status, orm.order_date, orm.carrier_code, imp.carrier_code, isnull(cfm.Matched_Date, Null) as "COFE Matched Date"
+FROM t_order orm WITH(NOLOCK)
+   JOIN t_import_order imp WITH(NOLOCK)
+        ON orm.order_number = imp.order_number
+	JOIN t_order_detail pck WITH(NOLOCK)
+		ON pck.order_number = orm.order_number
+	LEFT OUTER JOIN OutCofeOrderMasterMatched cfm WITH(NOLOCK) 
+		ON orm.order_number = cfm.Order_Number
+WHERE  orm.order_number NOT LIKE 'SO%'-- would like to change this to orm.order_type in ('ECOM')--OC 3/25/19
+AND orm.order_number NOT LIKE 'RTV%'
+AND orm.order_number NOT LIKE 'TO%'
+AND orm.order_type NOT LIKE 'SM%'
+AND CAST(orm.order_date AS DATE) = @odate
+AND imp.importStatus not in ('E')
+and orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'PROCESSING', 'SHIPPING')
+AND pck.qty > (ISNULL(pck.cancel_qty,0) + ISNULL(pck.bo_qty,0))
+GROUP BY orm.order_number, orm.status, orm.order_date, orm.carrier_code, imp.carrier_code, cfm.Matched_Date
+order by cfm.Matched_Date DESC
