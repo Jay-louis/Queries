@@ -1,0 +1,12 @@
+select top 700000
+
+orm.order_number, orm.order_date, orm.latest_ship_date, orm.priority, status, orm.carrier_code
+from t_order orm(nolock)
+--WHERE orm.status IN ('AUTOFAIL','IMPORTED','RATEFAIL','RATING')
+WHERE orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S','RELEASED','PROCESSING','SHIPPING')
+AND orm.order_type NOT IN ('RT','RTV','SM')
+--AND orm.latest_ship_date <= '2019-12-30 16:30:00.000'
+--AND orm.order_date <= '2019-12-29 13:00:00.000'
+--AND orm.carrier_code not in ('UPS2DA','UPSSPP','UPSSPS')
+--AND orm.carrier_code not like 'DHL%'
+ORDER BY orm.latest_ship_date ASC, orm.priority DESC
