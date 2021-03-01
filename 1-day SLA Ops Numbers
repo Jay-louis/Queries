@@ -1,7 +1,7 @@
 SELECT	--CAST(orm.order_date AS DATE) "order_date"
 		  orm.status
 		  ,count(DISTINCT orm.order_number) AS 'order_count'
-		  , ISNULL(COUNT(pck.line_number), 0) AS 'Pick Qty'
+		  , SUM(pck.qty) AS 'Pick Qty'
           
 FROM t_order orm WITH(NOLOCK)
    JOIN t_import_order imp WITH(NOLOCK)
