@@ -1,16 +1,11 @@
 declare @dos int
 declare @hday int
-set @dos = 7 --days of supply
+set @dos = 3 --days of supply
 set @hday = 28 --historical days
-DECLARE @bld1 as NVARCHAR(25)
-SET @bld1 = 'BS-%'
-DECLARE @bld2 as NVARCHAR(25)
-SET @bld2 = 'BS-%'
-
+​
 select 
- e.item_number, e.order_qty, e.picked_qty, e.qty_needed, e.pm_qty, e.bs_qty, e.scrb_qty, e.stg_qty, e.total_qty, e.location_id, e.hu_id,
- e.item_number as item_number2, e.actual_qty,
- (case when m.size = 'OS' then 'OS' else 'NOT OS' end) SFS, /*m.style, m.color,*/ m.size, 
+ e.*, 
+ (case when m.size = 'OS' then 'OS' else 'NOT OS' end) SFS, m.style, m.color, m.size, 
  (case 
   when pm_qty < qty_needed and FDE1 > 0 then 'Critical'
   when pm_qty < qty_needed then 'Urgent'
@@ -44,8 +39,8 @@ from
  (
   select  *,
    (CASE
-     WHEN runningTotal - actual_qty <= qty_needed  OR (rowNumber = 1 AND (runningTotal > (qty_needed))) THEN 'PULL'
-	 WHEN runningTotal > qty_needed  THEN 'DELETE'
+     WHEN runningTotal + pm_qty - actual_qty <= qty_needed  OR (rowNumber = 1 AND (runningTotal > (qty_needed))) THEN 'PULL'
+	 WHEN runningTotal + pm_qty > qty_needed  THEN 'DELETE'
     ELSE 'DELETE' END
    ) AS 'replen'
   from
@@ -76,10 +71,9 @@ count(distinct (case when carrier_code = 'FDE1' then order_number end)) 'FDE1',
 	isnull((
 		  SELECT sum(isnull(pm.actual_qty,0)) AS pm_qty
 		  FROM t_stored_item pm (nolock)
-		  WHERE type = '0'  
+		  WHERE type = '0' and status = 'A'
 		  AND (location_id LIKE 'AA%' OR location_id LIKE 'AB%' OR location_id LIKE 'AC%' OR location_id LIKE 'AD%') 
 		  AND pm.item_number = a1.item_number
-		  AND status = 'A'
 		  GROUP BY item_number
 		  ), 0) pm_qty,
 		 isnull((
@@ -138,12 +132,12 @@ where ceiling((order_qty/@hday)*@dos) - pm_qty > 0
 	 and pm_qty - 0 < ceiling((order_qty/@hday)*@dos) -- Change qty to check for proactive
 	  ) b
      join t_stored_item i (nolock) on i.item_number = b.item_number and i.type = '0' 
-	 AND (i.location_id LIKE @bld1 or i.location_id like @bld2) -- Bulk locations (SFS only or include RB/SEV) 
+	 AND (i.location_id LIKE 'BS-%' or i.location_id like 'SC-%' or i.location_id like 'SV-%' or i.location_id like 'RB-%') -- Bulk locations (SFS only or include RB/SEV) 
 	 ) c
 	) d
 where (CASE
-     WHEN runningTotal - actual_qty <= qty_needed  OR (rowNumber = 1 AND (runningTotal > (qty_needed))) THEN 'PULL'
-	 WHEN runningTotal > qty_needed  THEN 'DELETE'
+     WHEN runningTotal + pm_qty - actual_qty <= qty_needed  OR (rowNumber = 1 AND (runningTotal > (qty_needed))) THEN 'PULL'
+	 WHEN runningTotal + pm_qty > qty_needed  THEN 'DELETE'
     ELSE 'DELETE' END
    ) <> 'DELETE'
    ) e
