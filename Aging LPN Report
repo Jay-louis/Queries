@@ -1,0 +1,33 @@
+select z.*, l.employee_id, UPPER(e.name) name, CONVERT(varchar, DATEDIFF(MINUTE, z.dropped_time, getdate())) aging_time  from
+(SELECT stg.hu_id stg_hu_id, item_number, stg.location_id current_location , isnull(stg.actual_qty,0) AS actual_qty, b.hu_id pulled_hu_id, b.location_id pulled_location, b.pulled_time,
+(select max(end_tran_date + end_tran_time) from t_tran_log l2 (nolock) where l2.hu_id = stg.hu_id and l2.location_id_2 = stg.location_id) dropped_time
+from t_stored_item stg
+          left join 
+		  (select l.hu_id, location_id, end_tran_date + end_tran_time pulled_time from t_tran_log l (nolock)
+		  join
+		  (select hu_id, max(tran_log_id) first_location from t_tran_log l (nolock)
+		  where (location_id like 'RB%' or location_id like 'BS%') and tran_type = '201'
+		  group by hu_id) a on a.hu_id = l.hu_id and l.tran_log_id = a.first_location
+		  group by l.hu_id, location_id, end_tran_date + end_tran_time) b on b.hu_id = stg.hu_id
+		  WHERE type = '0'
+		  AND status = 'A'
+		  AND (stg.location_id LIKE 'CP%'
+		  OR stg.location_id LIKE 'OS%'
+		  OR stg.location_id LIKE 'RCV%'
+		  OR stg.location_id LIKE 'RESTOCKER%'
+		  OR stg.location_id LIKE 'CART%'
+		  OR stg.location_id LIKE 'SFS%'
+		  OR stg.location_id LIKE 'REC%'
+		  OR stg.location_id LIKE 'TRANS%'
+		  OR stg.location_id LIKE 'INV%'
+		  OR stg.location_id LIKE 'RIM%'
+		  OR stg.location_id LIKE '[1-9]%')
+		  AND stg.hu_id in (
+------INSERT LPNS BELOW-------
+N'LPN5663802'
+------INSERT LPNS ABOVE-------
+)
+ GROUP BY stg.hu_id, stg.location_id, item_number, actual_qty, b.hu_id, b.location_id, b.pulled_time) z
+left join t_tran_log l (nolock) on l.hu_id = z.stg_hu_id and (l.end_tran_date + l.end_tran_time) = z.dropped_time and z.current_location = l.location_id_2
+join t_employee e (nolock) on e.id = l.employee_id
+order by cast(CONVERT(varchar, DATEDIFF(MINUTE, dropped_time, getdate())) as int) desc
