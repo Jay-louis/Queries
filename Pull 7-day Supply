@@ -1,64 +1,147 @@
-
--- 7 Days of Supply
-SELECT  m.item_number, m.shopify_product_variant_id as vid--, ( Coalesce(SUM(d.demand), 0) - isnull(pm.PickInv,0)) AS need
-, isnull(pm.PickInv,0) as PickInv
-, isnull(blk.BulkInv,0) as BulkInv
-, isnull(sev.SevInv,0) as SevInv
-, isnull(fore.[7Days] ,0) as '7dayssupply'
---INTO #TMP_REPLEN 
-FROM t_item_master m (nolock)
+declare @dos int
+declare @hday int
+set @dos = 3 --days of supply
+set @hday = 28 --historical days
 ​
---FIND total Units in PICK MOD inventory
-LEFT OUTER JOIN(SELECT item_number, sum(isnull(actual_qty,0)) AS PickInv
-FROM t_stored_item (nolock)
-WHERE type = '0' 
-AND (location_id LIKE 'AA%' OR location_id LIKE 'AB%' OR location_id LIKE 'AC%' OR location_id LIKE 'AD%') 
-AND status = 'A' 
---AND item_number = '827088'
-GROUP BY item_number
-) pm
-ON m.item_number = pm.item_number
---FIND total Units in BULK inventory
-	LEFT OUTER JOIN(SELECT item_number, sum(isnull(actual_qty,0)) AS BulkInv
-FROM t_stored_item sto(nolock)
-WHERE type = '0'  
-AND status = 'A' 
-AND (sto.location_id LIKE 'BS%'
-OR sto.location_id LIKE 'SC%'
-OR sto.location_id LIKE 'SV%'
-OR sto.location_id LIKE 'RCV%')
---AND ord.item_number = '438221'
-GROUP BY item_number
-) blk
-ON m.item_number = blk.item_number
---FIND total Units in BULK inventory
-	LEFT OUTER JOIN(SELECT item_number, sum(isnull(actual_qty,0)) AS SevInv
-FROM t_stored_item sto(nolock)
-WHERE type = '0'  
-AND status = 'A' 
-AND --(sto.location_id LIKE 'BS%'
-( sto.location_id LIKE 'SC%'
-OR sto.location_id LIKE 'SV%'
-OR sto.location_id LIKE 'RB%')
---AND item_number = '827088'
-GROUP BY item_number
-) sev
-ON m.item_number = sev.item_number
---find X days of supply
-LEFT OUTER JOIN
-(SELECT item_number, ((SUM(ord.qty)/28)*7) AS '7Days' --dividing 14 days worth by 2 to get 7 days of supply
-FROM t_order_detail ord (nolock)
-INNER JOIN t_order orm (nolock)
-ON orm.order_number = ord.order_number
-WHERE orm.order_date >= GETDATE() -28
-AND orm.order_type not in ('SM','RTV')
---AND ord.item_number = '438221'
-GROUP BY item_number) fore
-ON fore.item_number = m.item_number
-​
-GROUP BY m.item_master_id, m.item_number, m.shopify_product_variant_id, pm.PickInv, fore.[7Days],blk.BulkInv, sev.SevInv
---HAVING Coalesce(SUM(d.demand), 0) > 0
---HAVING ( Coalesce(SUM(d.demand), 0) - isnull(pm.PickInv,0)) > 0
---HAVING isnull(pm.PickInv,0) > isnull(fore.[7Days] ,0)
-ORDER BY m.shopify_product_variant_id,m.item_master_id
---END 7 Days
+select 
+ e.*, 
+ (case when m.size = 'OS' then 'OS' else 'NOT OS' end) SFS, m.style, m.color, m.size, 
+ (case 
+  when pm_qty < qty_needed and FDE1 > 0 then 'Critical'
+  when pm_qty < qty_needed then 'Urgent'
+  when pm_qty = qty_needed then 'Demand'
+  else 'Proactive' end) replen_status,
+  (case when location_id like 'RB-%' then 'RIM'
+  when location_id like 'SV-%' or location_id like 'SC-%' then 'SEVILLE'
+  when location_id like 'BS-%' then 'SFS' end) building,
+  isnull((
+		  SELECT sum(isnull(actual_qty,0)) AS stg_qty
+		  FROM t_stored_item stg (nolock)
+		  WHERE type = '0' 
+		  AND (location_id LIKE 'CP%'
+		  OR location_id LIKE 'OS%'
+		  OR location_id LIKE 'RCV%'
+		  OR location_id LIKE 'RESTOCKER%'
+		  OR location_id LIKE 'CART%'
+		  OR location_id LIKE 'SFS%'
+		  OR location_id LIKE 'REC%'
+		  OR location_id LIKE 'TRANS%'
+		  OR location_id LIKE 'INV%'
+		  OR location_id LIKE 'RIM%')
+		  AND stg.item_number = e.item_number and stg.hu_id = e.hu_id
+		  GROUP BY item_number
+		 ),0) stg_qty_check,
+    (case when stg_qty >= qty_needed then 'EXCLUDE' else 'INCLUDE' end) staging_check
+  --,
+  --(case when right(left(location_id,5),2) between 22 and 30 then 1 else 0 end) aisle_check,
+  --(case when left(right(location_id,7),2) > 03 then 1 else 0 end) level_check
+from 
+ (
+  select  *,
+   (CASE
+     WHEN runningTotal + pm_qty - actual_qty <= qty_needed  OR (rowNumber = 1 AND (runningTotal > (qty_needed))) THEN 'PULL'
+	 WHEN runningTotal + pm_qty > qty_needed  THEN 'DELETE'
+    ELSE 'DELETE' END
+   ) AS 'replen'
+  from
+  (
+   SELECT *, 
+    SUM (actual_qty) OVER (PARTITION BY item_number ORDER BY rowNumber) AS runningTotal 
+   from
+   (
+    select 
+     b.item_number, order_qty, picked_qty, b.qty_needed, pm_qty, bs_qty, scrb_qty, stg_qty, total_qty,
+	 i.location_id, i.hu_id, i.actual_qty, i.status, i.type, FDE1,
+	 ROW_NUMBER () OVER ( PARTITION BY i.item_number ORDER BY i.item_number DESC, i.location_id ASC ) AS 'rowNumber'
+    from
+    (
+	 select 
+	  item_number, order_qty, picked_qty, ceiling((order_qty/@hday)*@dos) qty_needed, pm_qty, bs_qty, scrb_qty, stg_qty,
+      pm_qty + bs_qty + scrb_qty + stg_qty total_qty, FDE1
+	 from
+     (
+	select * from
+(select 
+item_number, 
+isnull(sum(case when status_check = 'IMPORTED' then order_qty end),0) order_qty_imported, 
+isnull(count(case when status_check = 'RELEASED' then order_qty end),0) order_qty_released,
+isnull(sum(case when status_check = 'IMPORTED' then order_qty end),0) + isnull(count(case when status_check = 'RELEASED' then order_qty end),0) order_qty,
+sum(picked_qty) picked_qty,
+count(distinct (case when carrier_code = 'FDE1' then order_number end)) 'FDE1',
+	isnull((
+		  SELECT sum(isnull(pm.actual_qty,0)) AS pm_qty
+		  FROM t_stored_item pm (nolock)
+		  WHERE type = '0' and status = 'A'
+		  AND (location_id LIKE 'AA%' OR location_id LIKE 'AB%' OR location_id LIKE 'AC%' OR location_id LIKE 'AD%') 
+		  AND pm.item_number = a1.item_number
+		  GROUP BY item_number
+		  ), 0) pm_qty,
+		 isnull((
+		  SELECT sum(isnull(actual_qty,0)) AS bs_qty
+		  FROM t_stored_item bs (nolock)
+		  WHERE type = '0' 
+		  AND (location_id LIKE 'BS-%')
+		  AND bs.item_number = a1.item_number
+		  GROUP BY item_number
+		 ),0) bs_qty,
+		 isnull((
+		  SELECT sum(isnull(actual_qty,0)) AS scrb_qty
+		  FROM t_stored_item scrb (nolock)
+		  WHERE type = '0' 
+		  AND (location_id LIKE 'SC-%'
+		  OR location_id LIKE 'SV-%'
+		  OR location_id LIKE 'RB-%') 
+		  AND scrb.item_number = a1.item_number
+		 GROUP BY item_number
+         ),0) scrb_qty,
+		 isnull((
+		  SELECT sum(isnull(actual_qty,0)) AS stg_qty
+		  FROM t_stored_item stg (nolock)
+		  WHERE type = '0' 
+		  AND (location_id LIKE 'CP%'
+		  OR location_id LIKE 'OS%'
+		  OR location_id LIKE 'RCV%'
+		  OR location_id LIKE 'RESTOCKER%'
+		  OR location_id LIKE 'CART%'
+		  OR location_id LIKE 'SFS%'
+		  OR location_id LIKE 'REC%'
+		  OR location_id LIKE 'TRANS%'
+		  OR location_id LIKE 'INV%'
+		  OR location_id LIKE 'RIM%')
+		  AND stg.item_number = a1.item_number
+		  GROUP BY item_number
+		 ),0) stg_qty
+from
+(select ord.order_number, ord.item_number, ord.qty order_qty, 
+isnull(pkd.planned_quantity,0) planned_qty, isnull(pkd.picked_quantity,0) picked_qty,
+(case when pkd.planned_quantity is null then 'IMPORTED' else 'RELEASED' end) status_check,
+io.carrier_code from t_order_detail ord (nolock)
+join t_order orm (nolock) on orm.order_number = ord.order_number
+left join t_pick_detail pkd (nolock) on pkd.order_number = ord.order_number and pkd.line_number = ord.line_number and pkd.item_number = ord.item_number
+left join t_import_order io (nolock) on io.order_number = ord.order_number and io.carrier_code = 'FDE1'
+		where 
+		cast(orm.order_date as date) >= cast(GETDATE()-@hday as date) --Imported Orders in HJ Date Range
+		AND
+        orm.order_type in ('ECOM')
+		) a1
+group by item_number) a2
+where ceiling((order_qty/@hday)*@dos) - pm_qty > 0
+		) a
+     where 
+	 (bs_qty > 0 or scrb_qty > 0) -- Bulk locations qty check (SFS only or include RB/SEV)
+	 and pm_qty - 0 < ceiling((order_qty/@hday)*@dos) -- Change qty to check for proactive
+	  ) b
+     join t_stored_item i (nolock) on i.item_number = b.item_number and i.type = '0' 
+	 AND (i.location_id LIKE 'BS-%' or i.location_id like 'SC-%' or i.location_id like 'SV-%' or i.location_id like 'RB-%') -- Bulk locations (SFS only or include RB/SEV) 
+	 ) c
+	) d
+where (CASE
+     WHEN runningTotal + pm_qty - actual_qty <= qty_needed  OR (rowNumber = 1 AND (runningTotal > (qty_needed))) THEN 'PULL'
+	 WHEN runningTotal + pm_qty > qty_needed  THEN 'DELETE'
+    ELSE 'DELETE' END
+   ) <> 'DELETE'
+   ) e
+join t_item_master m (nolock) on m.item_number = e.item_number
+--where (case when right(left(location_id,5),2) between 22 and 30 then 1 else 0 end) +
+ -- (case when left(right(location_id,7),2) > 03 then 1 else 0 end) < 2
+ORDER BY replen_status desc, item_number, rowNumber
