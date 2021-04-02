@@ -1,3 +1,5 @@
+--1 Day Replen Query
+
 select 
  e.*, 
  (case when m.size = 'OS' then 'OS' else 'NOT OS' end) SFS, m.style, m.color, m.size, 
@@ -13,8 +15,9 @@ from
  (
   select  *,
    (CASE
-     WHEN runningTotal + pm_qty - actual_qty <= qty_needed  OR (rowNumber = 1 AND (runningTotal > (qty_needed))) THEN 'PULL'
-	 WHEN runningTotal + pm_qty > qty_needed  THEN 'DELETE'
+     WHEN runningTotal + pm_qty + stg_qty - actual_qty < qty_needed THEN 'PULL'
+	 WHEN runningTotal + pm_qty + stg_qty - actual_qty > qty_needed  THEN 'DELETE'
+	 WHEN runningTotal + pm_qty + stg_qty - actual_qty = qty_needed THEN 'PULL'
     ELSE 'DELETE' END
    ) AS 'replen'
   from
@@ -41,7 +44,7 @@ isnull(sum(case when status_check = 'IMPORTED' then order_qty end),0) order_qty_
 isnull(count(case when status_check = 'RELEASED' then order_qty end),0) order_qty_released,
 isnull(sum(case when status_check = 'IMPORTED' then order_qty end),0) + isnull(count(case when status_check = 'RELEASED' then order_qty end),0) order_qty,
 sum(picked_qty) picked_qty,
-count(distinct (case when carrier_code = 'FDE1' then order_number end)) 'FDE1',
+count(distinct (case when carrier_code in ('FDE1', '1DAY') then order_number end)) 'FDE1',
 	isnull((
 		  SELECT sum(isnull(pm.actual_qty,0)) AS pm_qty
 		  FROM t_stored_item pm (nolock)
@@ -92,9 +95,9 @@ isnull(pkd.planned_quantity,0) planned_qty, isnull(pkd.picked_quantity,0) picked
 io.carrier_code from t_order_detail ord (nolock)
 join t_order orm (nolock) on orm.order_number = ord.order_number
 left join t_pick_detail pkd (nolock) on pkd.order_number = ord.order_number and pkd.line_number = ord.line_number and pkd.item_number = ord.item_number
-join t_import_order io (nolock) on io.order_number = ord.order_number and io.carrier_code = 'FDE1' 
-AND io.dateTimeInserted  >= CAST(CONVERT(VARCHAR(10), GETDATE(), 101) + ' 13:00:00' AS DATETIME)
-AND io.dateTimeInserted <= CAST(CONVERT(VARCHAR(10), GETDATE()+1, 101) + ' 13:10:00' AS DATETIME)
+join t_import_order io (nolock) on io.order_number = ord.order_number and (io.carrier_code = 'FDE1' or io.carrier_code = '1DAY') 
+AND io.dateTimeInserted  >= CAST(CONVERT(VARCHAR(10), GETDATE()-1, 101) + ' 13:00:00' AS DATETIME)
+AND io.dateTimeInserted <= CAST(CONVERT(VARCHAR(10), GETDATE(), 101) + ' 13:10:00' AS DATETIME)
 AND io.importStatus <> 'E'
 		and orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'PROCESSING', 'SHIPPING') 
 		and orm.order_type in ('ECOM')
@@ -111,9 +114,11 @@ where order_qty - picked_qty > 0
 	 ) c
 	) d
 where (CASE
-     WHEN runningTotal + pm_qty - actual_qty <= qty_needed  OR (rowNumber = 1 AND (runningTotal > (qty_needed))) THEN 'PULL'
-	 WHEN runningTotal + pm_qty > qty_needed  THEN 'DELETE'
+     WHEN runningTotal + pm_qty + stg_qty - actual_qty < qty_needed THEN 'PULL'
+	 WHEN runningTotal + pm_qty + stg_qty - actual_qty > qty_needed  THEN 'DELETE'
+	 WHEN runningTotal + pm_qty + stg_qty - actual_qty = qty_needed THEN 'PULL'
     ELSE 'DELETE' END
    ) <> 'DELETE'
    ) e
 join t_item_master m (nolock) on m.item_number = e.item_number
+ORDER BY replen_status desc, item_number, rowNumber
