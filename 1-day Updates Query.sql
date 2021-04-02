@@ -16,7 +16,7 @@ f.hu_id ship_lane_tracking, f.location_id ship_lane_loc,
 hum.load_id load_number,
 a.cls_error_count, isnull(ship_jackpots,0) shipping_jackpots
 from t_order orm (nolock)
-left join t_import_order io (nolock) on io.order_number = orm.order_number and io.carrier_code = 'FDE1' and io.importStatus not in ('E')
+left join t_import_order io (nolock) on io.order_number = orm.order_number and (io.carrier_code = 'FDE1' or io.carrier_code = '1DAY') and io.importStatus not in ('E')
 left join t_shipment_track t (nolock) on t.order_number = orm.order_number and t.label_status = 'COMPLETE' and suid is not null and puid is not null
 left join (select order_number, count(error_text) cls_error_count from t_cls_xml_log l (nolock)
 group by order_number) a on a.order_number = orm.order_number
@@ -31,9 +31,9 @@ group by order_number, hu_id, location_id) f on f.tl_order_number = orm.order_nu
 left join (select order_number, sum(d.qty) ordered_qty from t_order_detail d (nolock)
 group by d.order_number) e on e.order_number = orm.order_number
 WHERE io.dateTimeInserted  >= CAST(CONVERT(VARCHAR(10), GETDATE()-1, 101) + ' 13:00:00' AS DATETIME)
-AND io.dateTimeInserted <= CAST(CONVERT(VARCHAR(10), GETDATE(), 101) + ' 13:00:00' AS DATETIME)
+AND io.dateTimeInserted <= CAST(CONVERT(VARCHAR(10), GETDATE(), 101) + ' 13:10:00' AS DATETIME)
 and orm.status not in ('CANCELLED', 'SHIPPED')
-and (io.carrier_code = 'FDE1' or orm.carrier_code = 'FDEP' or orm.carrier_code = 'FDE1')
+and (io.carrier_code = 'FDE1' or orm.carrier_code = 'FDEP' or orm.carrier_code = 'FDE1' or io.carrier_code = '1DAY')
 and orm.order_type = 'ECOM'
 ) b
-order by validation desc, packed_on
+order by validation desc, packed_on asc
