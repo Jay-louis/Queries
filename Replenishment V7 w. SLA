@@ -8,24 +8,24 @@ DECLARE @building2 AS NVARCHAR(20)
 DECLARE @multiplier AS INT
 DECLARE @SLA AS DATETIME
 DECLARE @SLAON AS INT
-​
+
 --@SLAON = 0 runs the HJ DATE and COFE DATE Replen Query | @SLAON = 1 runs the latest_ship_date Replen Query + COFE DATE)
-​
-​
+
+
 SET @multiplier = '1'
-SET @SLA = '2021-03-09 11:04:15.000'
+SET @SLA = '2021-03-11 07:25:28.000'
 SET @SLAON = 0 --IF THIS IS 1, @SLA must be changed above based on latest_ship_date/priority query as well as the COFE Dates Below*/ -- IF THIS IS 0, change the date ranges below like normal.
-​
+
 -- Input the date Ranges and Proactive Below instead of the end --
-SET @HJStart = '2021-02-17' /* <<< HJ Start Date*/ SET @HJEnd = '2021-03-08' /* <<< HJ End Date*/
-SET @CFStart = '2021-03-06' /* <<< COFE Start Date*/ SET @CFEnd = '2021-03-08' /* <<< COFE End Date*/
+SET @HJStart = '2021-03-27' /* <<< HJ Start Date*/ SET @HJEnd = '2021-04-01' /* <<< HJ End Date*/
+SET @CFStart = '2021-03-27' /* <<< COFE Start Date*/ SET @CFEnd = '2021-04-01' /* <<< COFE End Date*/
 SET @proactive = '0' -- Proactive Number --
 SET @building1 = 'BS-%' /* Parameter for Buildings */  SET @building2 = 'RB-%' --Example: Building1 = RB and Building 2 = RB Only RIM--
-​
+
 IF @SLAON = 1
-​
+
 BEGIN
-​
+
 select
  e.item_number, e.order_qty, e.picked_qty, e.qty_needed, e.pm_qty, e.bs_qty, e.scrb_qty, e.stg_qty, e.total_qty,
  e.location_id, e.hu_id, e.item_number, e.actual_qty,
@@ -44,8 +44,9 @@ from
  (
   select  *,
    (CASE
-     WHEN runningTotal + pm_qty - actual_qty <= qty_needed  OR (rowNumber = 1 AND (runningTotal > (qty_needed))) THEN 'PULL'
-	 WHEN runningTotal + pm_qty > qty_needed  THEN 'DELETE'
+     WHEN runningTotal + pm_qty + stg_qty - actual_qty < qty_needed THEN 'PULL'
+	 WHEN runningTotal + pm_qty + stg_qty - actual_qty > qty_needed  THEN 'DELETE'
+	 WHEN runningTotal + pm_qty + stg_qty - actual_qty = qty_needed THEN 'PULL'
     ELSE 'DELETE' END
    ) AS 'replen'
   from
@@ -72,7 +73,7 @@ isnull(sum(case when status_check = 'IMPORTED' then order_qty end),0) order_qty_
 isnull(count(case when status_check = 'RELEASED' then order_qty end),0) order_qty_released,
 isnull(sum(case when status_check = 'IMPORTED' then order_qty end),0) + isnull(count(case when status_check = 'RELEASED' then order_qty end),0) order_qty,
 sum(picked_qty) picked_qty,
-count(distinct (case when carrier_code = 'FDE1' then order_number end)) 'FDE1',
+count(distinct (case when carrier_code in ('FDE1', '1DAY') then order_number end)) 'FDE1',
 	isnull((
 		  SELECT sum(isnull(pm.actual_qty,0)) AS pm_qty
 		  FROM t_stored_item pm (nolock)
@@ -126,7 +127,7 @@ isnull(pkd.planned_quantity,0) planned_qty, isnull(pkd.picked_quantity,0) picked
 io.carrier_code from t_order_detail ord (nolock)
 join t_order orm (nolock) on orm.order_number = ord.order_number
 left join t_pick_detail pkd (nolock) on pkd.order_number = ord.order_number and pkd.line_number = ord.line_number and pkd.item_number = ord.item_number
-left join t_import_order io (nolock) on io.order_number = ord.order_number and io.carrier_code = 'FDE1'
+left join t_import_order io (nolock) on io.order_number = ord.order_number and (io.carrier_code = 'FDE1' or io.carrier_code = '1DAY')
 		where
 	   (
 		(orm.latest_ship_date <= @SLA) -- General Date Range (ALL in HJ)
@@ -153,20 +154,21 @@ where order_qty - picked_qty > 0
 	 ) c
 	) d
 where (CASE
-     WHEN runningTotal + pm_qty - actual_qty <= qty_needed  OR (rowNumber = 1 AND (runningTotal > (qty_needed))) THEN 'PULL'
-	 WHEN runningTotal + pm_qty > qty_needed  THEN 'DELETE'
+     WHEN runningTotal + pm_qty + stg_qty - actual_qty < qty_needed THEN 'PULL'
+	 WHEN runningTotal + pm_qty + stg_qty - actual_qty > qty_needed  THEN 'DELETE'
+	 WHEN runningTotal + pm_qty + stg_qty - actual_qty = qty_needed THEN 'PULL'
     ELSE 'DELETE' END
    ) <> 'DELETE'
    ) e
 join t_item_master m (nolock) on m.item_number = e.item_number
 ORDER BY replen_status desc, e.item_number, rowNumber
-​
+
 END
-​
+
 ELSE
-​
+
 BEGIN
-​
+
 select
  e.item_number, e.order_qty, e.picked_qty, e.qty_needed, e.pm_qty, e.bs_qty, e.scrb_qty, e.stg_qty, e.total_qty,
  e.location_id, e.hu_id, e.item_number, e.actual_qty,
@@ -185,8 +187,9 @@ from
  (
   select  *,
    (CASE
-     WHEN runningTotal + pm_qty - actual_qty <= qty_needed  OR (rowNumber = 1 AND (runningTotal > (qty_needed))) THEN 'PULL'
-	 WHEN runningTotal + pm_qty > qty_needed  THEN 'DELETE'
+     WHEN runningTotal + pm_qty + stg_qty - actual_qty < qty_needed THEN 'PULL'
+	 WHEN runningTotal + pm_qty + stg_qty - actual_qty > qty_needed  THEN 'DELETE'
+	 WHEN runningTotal + pm_qty + stg_qty - actual_qty = qty_needed THEN 'PULL'
     ELSE 'DELETE' END
    ) AS 'replen'
   from
@@ -213,7 +216,7 @@ isnull(sum(case when status_check = 'IMPORTED' then order_qty end),0) order_qty_
 isnull(count(case when status_check = 'RELEASED' then order_qty end),0) order_qty_released,
 isnull(sum(case when status_check = 'IMPORTED' then order_qty end),0) + isnull(count(case when status_check = 'RELEASED' then order_qty end),0) order_qty,
 sum(picked_qty) picked_qty,
-count(distinct (case when carrier_code = 'FDE1' then order_number end)) 'FDE1',
+count(distinct (case when (carrier_code = 'FDE1' or carrier_code = '1DAY') then order_number end)) 'FDE1',
 	isnull((
 		  SELECT sum(isnull(pm.actual_qty,0)) AS pm_qty
 		  FROM t_stored_item pm (nolock)
@@ -266,7 +269,7 @@ isnull(pkd.planned_quantity,0) planned_qty, isnull(pkd.picked_quantity,0) picked
 io.carrier_code from t_order_detail ord (nolock)
 join t_order orm (nolock) on orm.order_number = ord.order_number
 left join t_pick_detail pkd (nolock) on pkd.order_number = ord.order_number and pkd.line_number = ord.line_number and pkd.item_number = ord.item_number
-left join t_import_order io (nolock) on io.order_number = ord.order_number and io.carrier_code = 'FDE1'
+left join t_import_order io (nolock) on io.order_number = ord.order_number and (io.carrier_code = 'FDE1' or io.carrier_code = '1DAY')
 		where
 	   (
 		(cast(orm.order_date as date) between @HJStart and @HJEnd) -- General Date Range (ALL in HJ)
@@ -293,12 +296,13 @@ where order_qty - picked_qty > 0
 	 ) c
 	) d
 where (CASE
-     WHEN runningTotal + pm_qty - actual_qty <= qty_needed  OR (rowNumber = 1 AND (runningTotal > (qty_needed))) THEN 'PULL'
-	 WHEN runningTotal + pm_qty > qty_needed  THEN 'DELETE'
+     WHEN runningTotal + pm_qty + stg_qty - actual_qty < qty_needed THEN 'PULL'
+	 WHEN runningTotal + pm_qty + stg_qty - actual_qty > qty_needed  THEN 'DELETE'
+	 WHEN runningTotal + pm_qty + stg_qty - actual_qty = qty_needed THEN 'PULL'
     ELSE 'DELETE' END
    ) <> 'DELETE'
    ) e
 join t_item_master m (nolock) on m.item_number = e.item_number
 ORDER BY replen_status desc, e.item_number, rowNumber
-​
+
 END
