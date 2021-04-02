@@ -1,23 +1,15 @@
-SELECT	--CAST(orm.order_date AS DATE) "order_date"
-		  orm.status
-		  ,count(DISTINCT orm.order_number) AS 'order_count'
-		  , SUM(pck.qty) AS 'Pick Qty'
-          
-FROM t_order orm WITH(NOLOCK)
-   JOIN t_import_order imp WITH(NOLOCK)
+SELECT orm.status, COUNT(orm.order_number) as "order_count", SUM(a.units) "units_sum"
+FROM t_order orm WITH (NOLOCK)
+   JOIN t_import_order imp WITH (NOLOCK)
         ON orm.order_number = imp.order_number
-   JOIN t_order_detail pck WITH(NOLOCK)
-		ON pck.order_number = orm.order_number
-WHERE (imp.carrier_code LIKE 'F%'
-OR imp.carrier_code LIKE 'USPSE%'
-OR imp.carrier_code IN ('DHLEP', 'DHLE'))
+left join (select order_number, sum(qty) units from t_order_detail d (nolock)
+group by order_number) a on a.order_number = orm.order_number
+WHERE ((imp.carrier_code = 'FDE1') or (imp.carrier_code = '1DAY'))
 AND orm.order_number NOT LIKE 'SO%'-- would like to change this to orm.order_type in ('ECOM')--OC 3/25/19
 AND orm.order_number NOT LIKE 'RTV%'
 AND orm.order_number NOT LIKE 'TO%'
 AND orm.order_type NOT LIKE 'SM%'
-AND imp.dateTimeInserted  >= CAST(CONVERT(VARCHAR(10), GETDATE()-1, 101) + ' 13:00:00' AS DATETIME)
+AND imp.dateTimeInserted  >= CAST(CONVERT(VARCHAR(10), GETDATE()-1,101) + ' 13:00:00' AS DATETIME)
 AND imp.dateTimeInserted <= CAST(CONVERT(VARCHAR(10), GETDATE(), 101) + ' 13:10:00' AS DATETIME)
 AND imp.importStatus not in ('E')
-AND pck.qty > (ISNULL(pck.cancel_qty,0) + ISNULL(pck.bo_qty,0))
-group by orm.status--, CAST(orm.order_date as DATE)
-ORDER by status asc
+GROUP BY orm.status
