@@ -3,7 +3,7 @@ SELECT count (DISTINCT orm.order_number)
 FROM t_order orm WITH (NOLOCK)
    JOIN t_import_order imp WITH (NOLOCK)
         ON orm.order_number = imp.order_number
-WHERE ((imp.carrier_code = 'FDE1') or (imp.carrier_code = '1DAY'))
+WHERE ((imp.carrier_code = 'FDE1') or (imp.carrier_code = '1DAY') OR (imp.carrier_code IN ('carrier_code', 'DHLEP') or (imp.carrier_code = 'INE')))
 AND orm.order_number NOT LIKE 'SO%'-- would like to change this to orm.order_type in ('ECOM')--OC 3/25/19
 AND orm.order_number NOT LIKE 'RTV%'
 AND orm.order_number NOT LIKE 'TO%'
@@ -20,7 +20,7 @@ FROM t_order orm WITH (NOLOCK)
         ON orm.order_number = imp.order_number
 left join (select order_number, sum(qty) units from t_order_detail d (nolock)
 group by order_number) a on a.order_number = orm.order_number
-WHERE ((imp.carrier_code = 'FDE1') or (imp.carrier_code = '1DAY'))
+WHERE ((imp.carrier_code = 'FDE1') or (imp.carrier_code = '1DAY') OR (imp.carrier_code IN ('carrier_code', 'DHLEP') or (imp.carrier_code = 'INE')))
 AND orm.order_number NOT LIKE 'SO%'-- would like to change this to orm.order_type in ('ECOM')--OC 3/25/19
 AND orm.order_number NOT LIKE 'RTV%'
 AND orm.order_number NOT LIKE 'TO%'
