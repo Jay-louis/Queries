@@ -1,7 +1,7 @@
---*****adding total orders BACKLOG with Social Media PLUS problem imports UPDATE 08.19.2020
+--*****adding total orders BACKLOG with Social Media PLUS problem imports
 SELECT CAST(orm.order_date AS DATE) AS order_date
 	  ,ISNULL(back.BacklogOrders,0) AS 'Order Count'--need new sub
-      ,ISNULL(back.BackUnits,0) AS 'Total Units' --need new sub
+      ,cast(ISNULL(back.BackUnits,0) as int) AS 'Total Units' --need new sub
 	  ,isnull(bklg.backlog,0) AS 'SM Orders'
 	  ,COUNT(DISTINCT orm.order_number) AS order_count
 	  ,isnull(prob.ProblemOrders,'0') AS 'Potential Problem Orders'
@@ -12,23 +12,20 @@ LEFT OUTER JOIN (select cast(convert(char(11),order_date, 113) as datetime) as B
       FROM t_order ormn (nolock)
 	  LEFT OUTER JOIN t_order_detail ord WITH (NOLOCK)
       ON ormn.order_number = ord.order_number
-	  WHERE ormn.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S','PROCESSING', 'SHIPPING')
-      AND ormn.order_type NOT IN ('RT','RTV','SM')
+	  WHERE ormn.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'PROCESSING', 'SHIPPING', N'ERROR')
+      AND ormn.order_type NOT IN ('RT','RTV','SM', 'Transfer Order')
       AND ord.qty > (ISNULL(ord.cancel_qty,0) + ISNULL(ord.bo_qty,0))
 	  group by cast(convert(char(11), order_date, 113) as datetime)
 	  )back
 		ON cast(convert(char(11), orm.order_date, 113) as datetime) = back.BackOrderdate 
-​
-​
 LEFT outer join (select cast(convert(char(11), order_date, 113) as datetime) as orderdate
 	   ,count(distinct order_number) as backlog
 			from t_order (nolock)
-			where status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S','PROCESSING', 'SHIPPING')
+			where status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'PROCESSING', 'SHIPPING', N'ERROR')
 			and order_type IN ('SM')
 			group by cast(convert(char(11), order_date, 113) as datetime)
 			)bklg
 		ON cast(convert(char(11), orm.order_date, 113) as datetime) = bklg.orderdate 
-​
 left outer join (select cast(convert(char(11), imp2.order_date, 113) as datetime) as Prob_orderdate --add orders with potential import problems
 	   ,count(distinct imp2.order_number) as ProblemOrders
 	   --select imp2.order_number, orm2.order_number, * -- get details for problem orders (run without grouping)
@@ -42,22 +39,9 @@ left outer join (select cast(convert(char(11), imp2.order_date, 113) as datetime
 			group by cast(convert(char(11), imp2.order_date, 113) as datetime)
 			)prob
 		ON cast(convert(char(11), orm.order_date, 113) as datetime) = prob.Prob_orderdate 
-​
-WHERE --orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S')
-      orm.order_type NOT IN ('RT','RTV')
+WHERE --orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', N'ERROR')
+      orm.order_type NOT IN ('RT','RTV','SM', 'Transfer Order')
       --AND ord.qty > (ISNULL(ord.cancel_qty,0) + ISNULL(ord.bo_qty,0))
 GROUP BY CAST(orm.order_date AS DATE), bklg.backlog, prob.ProblemOrders ,back.BacklogOrders,back.BackUnits
 HAVING back.BacklogOrders > 0 OR bklg.backlog > 0
 ORDER BY CAST(orm.order_date AS DATE)
-​
-​
---BACKLOG--
-SELECT COUNT(DISTINCT orm.order_number) AS order_count
-     ,SUM(ord.qty) AS total_units
-FROM t_order orm WITH (NOLOCK)
-LEFT OUTER JOIN t_order_detail ord WITH (NOLOCK)
-     ON orm.wh_id = ord.wh_id
-     AND orm.order_number = ord.order_number
-WHERE orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S','PROCESSING', 'SHIPPING')
-     AND orm.order_type NOT IN ('RT','RTV','SM')
-     AND ord.qty > (ISNULL(ord.cancel_qty,0) + ISNULL(ord.bo_qty,0))
