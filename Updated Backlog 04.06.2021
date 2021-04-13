@@ -13,7 +13,7 @@ LEFT OUTER JOIN (select cast(convert(char(11),order_date, 113) as datetime) as B
 	  LEFT OUTER JOIN t_order_detail ord WITH (NOLOCK)
       ON ormn.order_number = ord.order_number
 	  WHERE ormn.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'PROCESSING', 'SHIPPING', 'ERROR')
-      AND ormn.order_type NOT IN ('RT','RTV','SM')
+      AND ormn.order_type NOT IN ('RT','RTV','SM', 'Transfer Order')
       AND ord.qty > (ISNULL(ord.cancel_qty,0) + ISNULL(ord.bo_qty,0))
 	  group by cast(convert(char(11), order_date, 113) as datetime)
 	  )back
