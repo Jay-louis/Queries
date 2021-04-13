@@ -1,26 +1,29 @@
 DECLARE @odate AS DATE
-SET @odate = '2021-02-13' -- Change Date Here --
+SET @odate = '2021-04-01' -- Change Date Here --
 
 
-SELECT count(DISTINCT orm.order_number) AS 'order_count'
-		  , ISNULL(COUNT(pck.line_number), 0) AS 'Pick QTY'
+SELECT	CAST(orm.order_date AS DATE) "order_date"
+		  , count(DISTINCT orm.order_number) AS 'order_count'
+		  , ISNULL(COUNT(pck.line_number), 0) AS 'Pick Qty'
           , orm.status
+		  
 FROM t_order orm WITH(NOLOCK)
    JOIN t_import_order imp WITH(NOLOCK)
         ON orm.order_number = imp.order_number
    JOIN t_order_detail pck WITH(NOLOCK)
 		ON pck.order_number = orm.order_number
 WHERE orm.order_number NOT LIKE 'SO%'-- would like to change this to orm.order_type in ('ECOM')--OC 3/25/19
-AND orm.order_number NOT LIKE 'RTV%'
-AND orm.order_number NOT LIKE 'TO%'
-AND orm.order_type NOT LIKE 'SM%'
+AND orm.order_type NOT IN ('RT','RTV','SM', 'Transfer Order')
 AND imp.importStatus not in ('E')
 AND CAST(orm.order_date AS DATE) = @odate
 AND pck.qty > (ISNULL(pck.cancel_qty,0) + ISNULL(pck.bo_qty,0))
-group by orm.status
+group by orm.status, CAST(orm.order_date as DATE)
 
-SELECT orm.order_number, ISNULL(COUNT(pck.line_number), 0) AS 'Pick QTY'
-          , orm.status, orm.order_date, orm.carrier_code, imp.carrier_code, isnull(cfm.Matched_Date, Null) as "COFE Matched Date"
+SELECT a.*
+FROM (SELECT orm.order_number, ISNULL(COUNT(pck.line_number), 0) AS 'Pick Qty'
+          , orm.status, orm.order_date, orm.carrier_code as "o.carrier", imp.carrier_code, isnull(cfm.Matched_Date, Null) as "COFE Matched Date"
+		  ,row_number() OVER(PARTITION BY orm.order_number, cfm.Order_Number ORDER BY isnull(cfm.Matched_Date, Null) DESC) AS row_num
+		  , imp.order_type as "imp_carrier"
 FROM t_order orm WITH(NOLOCK)
    JOIN t_import_order imp WITH(NOLOCK)
         ON orm.order_number = imp.order_number
@@ -29,12 +32,13 @@ FROM t_order orm WITH(NOLOCK)
 	LEFT OUTER JOIN OutCofeOrderMasterMatched cfm WITH(NOLOCK) 
 		ON orm.order_number = cfm.Order_Number
 WHERE  orm.order_number NOT LIKE 'SO%'-- would like to change this to orm.order_type in ('ECOM')--OC 3/25/19
-AND orm.order_number NOT LIKE 'RTV%'
-AND orm.order_number NOT LIKE 'TO%'
-AND orm.order_type NOT LIKE 'SM%'
+AND orm.order_type NOT IN ('RT','RTV','SM', 'Transfer Order')
 AND CAST(orm.order_date AS DATE) = @odate
 AND imp.importStatus not in ('E')
 and orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'PROCESSING', 'SHIPPING')
 AND pck.qty > (ISNULL(pck.cancel_qty,0) + ISNULL(pck.bo_qty,0))
-GROUP BY orm.order_number, orm.status, orm.order_date, orm.carrier_code, imp.carrier_code, cfm.Matched_Date
-order by cfm.Matched_Date DESC
+GROUP BY orm.order_number, orm.status, orm.order_date, orm.carrier_code, imp.carrier_code, cfm.Matched_Date, cfm.Order_Number, imp.order_type
+)a
+WHERE CAST(a.order_date AS DATE) = @odate
+AND row_num <= 1
+ORDER BY a.[COFE Matched Date] DESC, a.order_number
