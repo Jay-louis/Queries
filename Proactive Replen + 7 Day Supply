@@ -1,0 +1,209 @@
+DECLARE @bld1 as NVARCHAR(20)
+DECLARE @bld2 as NVARCHAR(20)
+
+SET @bld1 = 'SFS'
+SET @bld2 = 'RIM'
+
+-- determine items that have a demand greater than the quantity available in the pickmod and insert into a temptable
+CREATE TABLE #replen_need_merch (
+    item_number     NVARCHAR(30),
+    qty_needed      BIGINT,
+    )
+-- add items from merch list (item_number and qty_needed) into temp table
+INSERT INTO #replen_need_merch
+  (item_number, qty_needed)
+SELECT '857529', '0'
+
+
+
+--INSERT STATEMENTS ABOVE HERE---
+--Variables for 7 DoS
+declare @dos int
+declare @hday int
+set @dos = 7 --days of supply
+set @hday = 28 --historical days
+--Insert 7 DoS Data into Temp Table
+select item_number, qty_needed into #dos_needed from
+	 (select 
+	  item_number, (ceiling((order_qty/@hday)*@dos)) - pm_qty - stg_qty qty_needed
+	 from
+     (
+	select * from
+(select 
+item_number, 
+isnull(sum(case when status_check = 'IMPORTED' then order_qty end),0) order_qty_imported, 
+isnull(count(case when status_check = 'RELEASED' then order_qty end),0) order_qty_released,
+isnull(sum(case when status_check = 'IMPORTED' then order_qty end),0) + isnull(count(case when status_check = 'RELEASED' then order_qty end),0) order_qty,
+sum(picked_qty) picked_qty,
+count(distinct (case when carrier_code = 'FDE1' then order_number end)) 'FDE1',
+	isnull((
+		  SELECT sum(isnull(pm.actual_qty,0)) AS pm_qty
+		  FROM t_stored_item pm (nolock)
+		  WHERE type = '0' and status = 'A'
+		  AND (location_id LIKE 'AA%' OR location_id LIKE 'AB%' OR location_id LIKE 'AC%' OR location_id LIKE 'AD%') 
+		  AND pm.item_number = a1.item_number
+		  GROUP BY item_number
+		  ), 0) pm_qty,
+		 isnull((
+		  SELECT sum(isnull(actual_qty,0)) AS bs_qty
+		  FROM t_stored_item bs (nolock)
+		  WHERE type = '0' 
+		  AND (location_id LIKE 'BS-%')
+		  AND bs.item_number = a1.item_number
+		  GROUP BY item_number
+		 ),0) bs_qty,
+		 isnull((
+		  SELECT sum(isnull(actual_qty,0)) AS scrb_qty
+		  FROM t_stored_item scrb (nolock)
+		  WHERE type = '0' 
+		  AND (location_id LIKE 'SC-%'
+		  OR location_id LIKE 'SV-%'
+		  OR location_id LIKE 'RB-%') 
+		  AND scrb.item_number = a1.item_number
+		 GROUP BY item_number
+         ),0) scrb_qty,
+		 isnull((
+		  SELECT sum(isnull(actual_qty,0)) AS stg_qty
+		  FROM t_stored_item stg (nolock)
+		  WHERE type = '0' 
+		  AND (location_id LIKE 'CP%'
+		  OR location_id LIKE 'OS%'
+		  OR location_id LIKE 'RCV%'
+		  OR location_id LIKE 'RESTOCKER%'
+		  OR location_id LIKE 'CART%'
+		  OR location_id LIKE 'SFS%'
+		  OR location_id LIKE 'REC%'
+		  OR location_id LIKE 'TRANS%'
+		  OR location_id LIKE 'INV%'
+		  OR location_id LIKE 'RIM%')
+		  AND stg.item_number = a1.item_number
+		  GROUP BY item_number
+		 ),0) stg_qty
+from
+(select ord.order_number, ord.item_number, ord.qty order_qty, 
+isnull(pkd.planned_quantity,0) planned_qty, isnull(pkd.picked_quantity,0) picked_qty,
+(case when pkd.planned_quantity is null then 'IMPORTED' else 'RELEASED' end) status_check,
+io.carrier_code from t_order_detail ord (nolock)
+join t_order orm (nolock) on orm.order_number = ord.order_number
+left join t_pick_detail pkd (nolock) on pkd.order_number = ord.order_number and pkd.line_number = ord.line_number and pkd.item_number = ord.item_number
+left join t_import_order io (nolock) on io.order_number = ord.order_number and io.carrier_code = 'FDE1'
+		where 
+		cast(orm.order_date as date) >= cast(GETDATE()-@hday as date) --Imported Orders in HJ Date Range
+		AND
+        orm.order_type in ('ECOM')
+		) a1
+group by item_number) a2
+where ceiling((order_qty/@hday)*@dos) - pm_qty > 0
+		) a
+     where 
+	 (bs_qty > 0 or scrb_qty > 0) -- Bulk locations qty check (SFS only or include RB/SEV)
+	 and pm_qty - 0 < ceiling((order_qty/@hday)*@dos) -- Change qty to check for proactive
+	 ) c
+where qty_needed > 0
+--Compare the two lists and give final qty_needed
+select item_number, (case when merch_qty > dos_qty then merch_qty
+                         when dos_qty > merch_qty then dos_qty
+						 else merch_qty end) qty_needed into #replen_need from
+(
+ select 
+  a.item_number, 
+  isnull((select sum(isnull(qty_needed,0)) from #replen_need_merch m (nolock) where m.item_number = a.item_number), 0) merch_qty,
+  isnull((select sum(isnull(qty_needed,0)) from #dos_needed d (nolock) where d.item_number = a.item_number),0) dos_qty
+ from
+ (
+  select 
+   item_number 
+  from #replen_need_merch m (nolock)
+  union all
+  select 
+   item_number 
+  from #dos_needed n (nolock)
+ ) a
+group by a.item_number
+) b
+SELECT m.item_number, m.shopify_product_variant_id as vid,  Coalesce(SUM(d.demand), 0) AS q 
+INTO #TMP_REPLEN 
+FROM t_item_master m
+LEFT OUTER JOIN(SELECT item_number, SUM(qty_needed) AS 'demand' 
+FROM #replen_need
+GROUP BY item_number) d
+ON d.item_number = m.item_number
+LEFT OUTER JOIN(SELECT item_number, COUNT(item_number) AS 'total' FROM t_stored_item (nolock)
+WHERE type = '0' AND (location_id LIKE 'AA%' OR location_id LIKE 'AB%' OR location_id LIKE 'AC%') AND status = 'A' GROUP BY item_number) t
+ON m.item_number = t.item_number
+GROUP BY m.item_master_id, m.item_number, m.shopify_product_variant_id
+HAVING Coalesce(SUM(d.demand), 0) > 0
+ORDER BY m.shopify_product_variant_id,m.item_master_id
+--SELECT COUNT(*) FROM #TMP_REPLEN
+--8217
+--Using the list of items in the temptable to gather a list of all LP's in bulk for these items
+ SELECT sto.location_id
+    , sto.hu_id
+    , sto.item_number
+    , sto.actual_qty
+    , itm.style
+    , itm.color
+    , itm.size
+    , CASE WHEN sto.location_id LIKE 'BS%' THEN 'SFS'
+            WHEN sto.location_id LIKE 'SC%' OR sto.location_id LIKE 'SV%' THEN 'SEVILLE'
+			WHEN sto.location_id LIKE 'RB%' then 'RIM'
+            WHEN sto.location_id LIKE 'A-%' OR sto.location_id LIKE 'M-%' OR sto.location_id LIKE 'C-%' THEN 'VERNON'
+            ELSE 'SEVILLE' END AS 'BUILDING'
+    ,ROW_NUMBER ()
+    OVER ( PARTITION BY sto.item_number ORDER BY sto.item_number DESC, sto.location_id ASC ) AS 'rowNumber'
+    ,t.q AS 'totalNeed'
+    INTO #TMP_REPLEN1
+    FROM t_stored_item sto (nolock)
+    INNER JOIN t_location loc ON loc.location_id = sto.location_id
+    INNER JOIN #TMP_REPLEN t ON t.item_number = sto.item_number
+    LEFT OUTER JOIN t_item_master itm ON itm.item_number = sto.item_number
+    WHERE loc.type = 'M'
+    AND sto.hu_id LIKE 'LP%'
+    AND sto.type = '0'
+    AND sto.status = 'A'
+    GROUP BY sto.item_number,  sto.actual_qty,sto.hu_id, sto.hu_id, itm.style, itm.color, itm.size, sto.location_id
+     , CASE WHEN (sto.location_id LIKE 'BS%' OR sto.location_id LIKE 'REC%' OR sto.location_id LIKE 'RCV%' OR sto.location_id LIKE 'ITM%') THEN 'SFS'
+            WHEN sto.location_id LIKE 'SC%' OR sto.location_id LIKE 'SV%' THEN 'SEVILLE'
+			WHEN sto.location_id LIKE 'RB%' THEN 'RIM'
+            WHEN sto.location_id LIKE 'A-%' OR sto.location_id LIKE 'M-%' OR sto.location_id LIKE 'C-%' THEN 'VERNON' ELSE 'SEVILLE' END, t.q
+    ORDER BY sto.item_number
+    --SELECT * FROM #TMP_REPLEN1
+  --SELECT COUNT(*) FROM #TMP_REPLEN1//6450
+  --SELECT COUNT(DISTINCT item_number) FROM #TMP_REPLEN1 // 1937
+--calculate running total
+  SELECT *
+    , SUM (actual_qty) OVER (PARTITION BY item_number ORDER BY rowNumber) AS runningTotal
+    INTO #TMP_REPLEN2
+    FROM #TMP_REPLEN1
+  ORDER BY item_number, runningTotal
+  --SELECT * FROM #TMP_REPLEN2 //6450
+  --SELECT COUNT(DISTINCT item_number) FROM #TMP_REPLEN2 //1937
+  --Calculate whether to PULL or DELETE LPN's
+  SELECT *,
+    CASE
+        WHEN runningTotal - actual_qty <= totalNeed OR (rowNumber = 1 AND (runningTotal > (totalNeed))) THEN 'PULL'
+        WHEN runningTotal >= totalNeed THEN 'DELETE'
+        ELSE 'DELETE' END AS 'replen'
+  INTO #TMP_REPLEN3
+  FROM #TMP_REPLEN2 a (nolock)
+  LEFT JOIN (
+		  SELECT pm.item_number pm_itm_num, sum(isnull(pm.actual_qty,0)) AS pm_qty
+		  FROM t_stored_item pm (nolock)
+		  WHERE type = '0'
+		  AND (location_id LIKE 'AA%' OR location_id LIKE 'AB%' OR location_id LIKE 'AC%' OR location_id LIKE 'AD%')
+		  AND status = 'A'
+		  GROUP BY pm.item_number) b on a.item_number = b.pm_itm_num
+  WHERE (BUILDING = @bld1 OR BUILDING = @bld2)
+  AND location_id NOT LIKE 'LOST%' AND location_id NOT LIKE 'RTV%'
+  ORDER BY a.item_number,rowNumber
+-- Use this as your replen sheet
+SELECT * FROM #TMP_REPLEN3
+WHERE replen = 'PULL'
+order by item_number, rowNumber asc
+DROP TABLE #TMP_REPLEN
+DROP TABLE #TMP_REPLEN1
+DROP TABLE #TMP_REPLEN2
+DROP TABLE #TMP_REPLEN3
+DROP TABLE #replen_need_merch
+DROP TABLE #replen_need
+DROP Table #dos_needed
