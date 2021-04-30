@@ -48,12 +48,12 @@ SELECT * FROM
 FROM t_stored_item sto WITH (NOLOCK)
          JOIN t_item_master itm WITH (NOLOCK) ON sto.item_number = itm.item_number
          JOIN t_location tloc WITH (NOLOCK) ON tloc.location_id = sto.location_id
-         LEFT JOIN (SELECT sti.hu_id, MAX(ttl.end_tran_date + ttl.end_tran_time) AS last_tran_date
+         LEFT JOIN (SELECT sti.hu_id, MAX(case when ttl.end_tran_date = ttl.end_tran_time then end_tran_time else ttl.end_tran_date + ttl.end_tran_time end) AS last_tran_date
                     FROM t_tran_log ttl WITH (NOLOCK)
                              JOIN t_stored_item sti WITH (NOLOCK) ON ttl.hu_id = sti.hu_id AND
                                                                      (ttl.location_id_2 = sti.location_id OR
-                                                                      ttl.generic_attribute_2 = sti.location_id)
-                    WHERE ttl.tran_type IN ('202', '614', '800')
+                                                                      ttl.generic_attribute_2 = sti.location_id OR ttl.location_id = sti.location_id)
+                  --  WHERE ttl.tran_type IN ('202', '614', '800', '603')
                     GROUP BY sti.hu_id) a ON sto.hu_id = a.hu_id -- Find Last Scan Date Into Current Loc
 WHERE (sto.type = '0' -- All Selling Inventory
     OR (sto.type < '0' AND tloc.type IN ('F','S','C','M','P') -- All Hold Inventory (Forks/Staging/Conveyor/Pickmod/Bulk)
@@ -65,6 +65,9 @@ WHERE (sto.type = '0' -- All Selling Inventory
              'PROBRESSTG', 'PROMO1-STG')) 
 	OR (sto.type < '0' AND sto.location_id = 'RMA' AND sto.hu_id is null)
 	))a
-	WHERE (a.location_id NOT LIKE 'LOST%' OR a.[Age in Days] <> 'Greater than 30 Days')
-	AND a.item_number IN ('975682') -- Insert SKUs Here
+	WHERE-- (a.location_id NOT LIKE 'LOST%')
+	--AND 
+	(a.[Age in Days] <> 'Greater than 30 Days')
+	AND 
+	a.item_number IN () -- Insert SKUs Here
 order by location_id asc
