@@ -1,18 +1,15 @@
--- WCS Check For Inventory Query--
-SELECT * FROM
+select order_number, item_number, order_qty, picked_qty, order_qty - picked_qty qty_needed, active_inv, problem_stock , where_else AS "Inv_QTY" from
+-- WCS Cofe Shorts Validation Report
+select b.*, m.alt_item_number, m.description, hum.control_number from
 (SELECT sto.location_id
      , sto.hu_id
      , sto.item_number
      , sto.actual_qty
      , CASE
            WHEN sto.location_id LIKE 'BS%' THEN 'SFS BULK'
-		   WHEN sto.location_id LIKE 'RB%' THEN 'RIM BULK'
-		   WHEN sto.location_id = 'SFSTORIM' THEN 'SFSTORIM'
-		   WHEN sto.location_id = 'RECRIM' THEN 'RECRIM'
-		   WHEN sto.location_id = 'RIMTOSFS' THEN 'RIMTOSFS'
            WHEN sto.location_id LIKE 'SC%' OR sto.location_id LIKE 'SV%' THEN 'SEV BULK'
            WHEN sto.location_id LIKE 'RCV%' THEN 'RCV'
-           WHEN sto.location_id IN ('RECSTAGE', 'SEVSTAGE', 'SFSSTAGE', 'RIM-STAGE', 'RIMSTAGE') THEN 'STAGING'
+           WHEN sto.location_id IN ('RECSTAGE', 'SEVSTAGE', 'SFSSTAGE') THEN 'STAGING'
            WHEN sto.location_id LIKE 'RESTOCKER%' THEN 'RESTOCKER'
            WHEN sto.location_id LIKE 'REC%' THEN 'RECEIVING-HOLD'
            WHEN sto.location_id LIKE '[1-9]%' OR sto.location_id LIKE 'CP%' THEN 'BADGE'
@@ -48,12 +45,12 @@ SELECT * FROM
 FROM t_stored_item sto WITH (NOLOCK)
          JOIN t_item_master itm WITH (NOLOCK) ON sto.item_number = itm.item_number
          JOIN t_location tloc WITH (NOLOCK) ON tloc.location_id = sto.location_id
-         LEFT JOIN (SELECT sti.hu_id, MAX(case when ttl.end_tran_date = ttl.end_tran_time then end_tran_time else ttl.end_tran_date + ttl.end_tran_time end) AS last_tran_date
+         LEFT JOIN (SELECT sti.hu_id, MAX(ttl.end_tran_date + ttl.end_tran_time) AS last_tran_date
                     FROM t_tran_log ttl WITH (NOLOCK)
                              JOIN t_stored_item sti WITH (NOLOCK) ON ttl.hu_id = sti.hu_id AND
                                                                      (ttl.location_id_2 = sti.location_id OR
-                                                                      ttl.generic_attribute_2 = sti.location_id OR ttl.location_id = sti.location_id)
-                  --  WHERE ttl.tran_type IN ('202', '614', '800', '603')
+                                                                      ttl.generic_attribute_2 = sti.location_id)
+                    WHERE ttl.tran_type IN ('202', '614', '800')
                     GROUP BY sti.hu_id) a ON sto.hu_id = a.hu_id -- Find Last Scan Date Into Current Loc
 WHERE (sto.type = '0' -- All Selling Inventory
     OR (sto.type < '0' AND tloc.type IN ('F','S','C','M','P') -- All Hold Inventory (Forks/Staging/Conveyor/Pickmod/Bulk)
@@ -63,11 +60,144 @@ WHERE (sto.type = '0' -- All Selling Inventory
         AND sto.location_id NOT IN
             ('SevilleDamages', 'QCSAMPLE-STAGE', 'LOSTITMLOC', 'FTL01', 'INVALIDSTG',
              'PROBRESSTG', 'PROMO1-STG')) 
-	OR (sto.type < '0' AND sto.location_id = 'RMA' AND sto.hu_id is null)
-	))a
-	WHERE-- (a.location_id NOT LIKE 'LOST%')
-	--AND 
-	((a.[Age in Days] <> 'Greater than 30 Days') or [Selling Status] = 'SELLING')
-	AND 
-	a.item_number IN ('731002') -- Insert SKUs Here
-order by location_id asc
+	OR (sto.type < '0' AND sto.location_id = 'RMA' AND sto.hu_id is null))
+  AND sto.item_number IN (select distinct item_number from
+(select order_number, item_number, order_qty, picked_qty, order_qty - picked_qty qty_needed, all_qty AS all_qty, bad_qty, bad_qty2, good_qty from
+(select o.order_number,
+ d.item_number, 
+ count(d.qty) order_qty, 
+ sum(p.picked_quantity) picked_qty,
+
+  isnull((
+  SELECT sum(isnull(actual_qty,0)) AS else_qty
+  FROM t_stored_item stg (nolock)
+  WHERE type IN ('0', '-1', '-85') 
+  WHERE type IN ('0', '-1', '-85', '-80') 
+  AND location_id NOT LIKE 'LOST%'
+  AND location_id NOT LIKE 'OUT%'
+  AND location_id NOT LIKE 'PACKRES%'
+  AND location_id NOT LIKE 'RTV%'
+  AND location_id NOT LIKE 'SEVDON%'
+  AND UPPER(location_id) NOT LIKE '%DAM%'
+  AND (location_id NOT LIKE 'SHIP-[0-9][0-9]-STG%')
+  AND location_id NOT LIKE 'SHIP%'
+  AND location_id NOT LIKE 'PICK%'
+  AND location_id NOT LIKE '%PRS%'
+  AND stg.item_number = d.item_number
+  GROUP BY item_number
+ ),0) where_else,
+
+ isnull((
+  SELECT sum(isnull(actual_qty,0)) AS active
+ ),0) all_qty,
+   isnull((
+  SELECT sum(isnull(actual_qty,0)) AS else_qty
+  FROM t_stored_item stg (nolock)
+  WHERE type = '0' 
+  WHERE (type IN ('-1', '-85', '-80') 
+  AND location_id NOT LIKE 'LOST%'
+  AND( location_id LIKE 'BS%'
+  OR location_id LIKE 'A[A-D]%'
+  OR location_id LIKE '%STAGE%'
+  OR location_id LIKE '%OS%'
+  OR location_id LIKE '%RB%'
+  OR location_id LIKE 'CP%'
+  OR location_id LIKE '[0-1]%'
+  OR location_id LIKE 'INV[1-2]%'
+  OR location_id LIKE 'PICKMOD%'
+  OR location_id LIKE 'RCV%'
+  OR location_id LIKE 'RESTOCKER%'
+  OR location_id LIKE 'SC%'
+  OR location_id LIKE 'SV%'
+  OR location_id LIKE '%TRAN%')
+  AND location_id NOT LIKE 'OUT%'
+  AND location_id NOT LIKE 'PACKRES%'
+  AND location_id NOT LIKE 'RTV%'
+  AND location_id NOT LIKE 'SEVDON%'
+  AND UPPER(location_id) NOT LIKE '%DAM%'
+  AND (location_id NOT LIKE 'SHIP-[0-9][0-9]-STG%')
+  AND location_id NOT LIKE 'SHIP%'
+  AND location_id NOT LIKE 'PICK%'
+  AND location_id NOT LIKE '%PRS%')
+  AND stg.item_number = d.item_number
+  GROUP BY item_number
+ ),0) active_inv,
+
+ ),0) bad_qty,
+ isnull((
+  SELECT sum(isnull(actual_qty,0)) AS investigate
+  SELECT sum(isnull(actual_qty,0)) AS else_qty
+  FROM t_stored_item stg (nolock)
+  WHERE type IN ('-1', '-85', '-80') 
+  AND location_id NOT LIKE 'LOST%'
+  AND( location_id LIKE 'BS%'
+  OR location_id LIKE 'A[A-D]%'
+  OR location_id LIKE '%STAGE%'
+  OR location_id LIKE '%OS%'
+  OR location_id LIKE '%RB%'
+  OR location_id LIKE 'CP%'
+  OR location_id LIKE '[0-1]%'
+  WHERE  (type = '0' AND (
+  location_id LIKE 'CP%'
+  OR location_id LIKE 'INV%'
+  OR location_id LIKE 'PICKMOD%'
+  OR location_id LIKE 'OS%'
+  OR location_id LIKE 'RCV%'
+  OR location_id LIKE 'RESTOCKER%'
+  OR location_id LIKE 'SC%'
+  OR location_id LIKE 'SV%'
+  OR location_id LIKE '%TRAN%')
+  OR location_id LIKE 'SFS%'
+  OR location_id LIKE 'TRANSIT%'))
+  AND stg.item_number = d.item_number
+  GROUP BY item_number
+ ),0) bad_qty2,
+  isnull((
+  SELECT sum(isnull(actual_qty,0)) AS else_qty
+  FROM t_stored_item stg (nolock)
+  WHERE (type IN ('0') 
+  AND location_id NOT LIKE 'LOST%'
+  AND location_id NOT LIKE 'OUT%'
+  AND location_id NOT LIKE 'PACKRES%'
+  AND location_id NOT LIKE 'RTV%'
+  AND location_id NOT LIKE 'SEVDON%'
+  AND UPPER(location_id) NOT LIKE '%DAM%'
+  AND (location_id NOT LIKE 'SHIP-[0-9][0-9]-STG%')
+  AND location_id NOT LIKE 'SHIP%'
+  AND location_id NOT LIKE 'PICK%'
+  AND location_id NOT LIKE '%PRS%'
+  AND location_id NOT LIKE 'CP%'
+  AND location_id NOT LIKE 'INV%'
+  AND location_id NOT LIKE 'OS%'
+  AND location_id NOT LIKE 'RCV%'
+  AND location_id NOT LIKE 'RESTOCKER%'
+  AND location_id NOT LIKE 'SFS%'
+  AND location_id NOT LIKE 'TRANSIT%')
+  AND stg.item_number = d.item_number
+  GROUP BY item_number
+ ),0) problem_stock
+
+ ),0) good_qty
+from t_order o (nolock)
+join t_order_detail d (nolock) on d.order_number = o.order_number
+join t_pick_detail p (nolock) on p.order_number = o.order_number and p.line_number = d.line_number and p.item_number = d.item_number and p.status not in ('CANCELLED')
+where cast(order_date as date) = '2020-09-17' and o.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'PROCESSING', 'SHIPPING')
+where cast(order_date as date) between '2020-12-16' and '2020-12-19' --change the date range here
+and o.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'PROCESSING', 'SHIPPING', 'ERROR')
+and o.order_type IN ('SM', 'EO', 'ECOM')
+and wcs_status in ('R', 'M', 'P', 'S', 'C', 'A')
+group by o.order_number, d.item_number) a
+where (order_qty - picked_qty) > 0 and (problem_stock > 0 and active_inv = 0)
+order by item_number, order_number
+where 
+(
+ ((order_qty - picked_qty) > good_qty and (bad_qty + bad_qty2) > 0)
+ or
+  ((order_qty - picked_qty) > 0 and good_qty = 0 and (bad_qty + bad_qty2) > 0)
+)
+)
+  a)
+) b
+join t_item_master m (nolock) on m.item_number = b.item_number
+left join t_hu_master hum (nolock) on hum.hu_id = b.hu_id
+order by item_number, location_id, hu_id
