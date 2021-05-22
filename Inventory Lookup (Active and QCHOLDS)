@@ -67,7 +67,6 @@ WHERE (sto.type = '0' -- All Selling Inventory
 	))a
 	WHERE-- (a.location_id NOT LIKE 'LOST%')
 	--AND 
-	(a.[Age in Days] <> 'Greater than 30 Days')
-	AND 
-	a.item_number IN () -- Insert SKUs Here
+	
+	a.item_number IN ('731002') -- Insert SKUs Here
 order by location_id asc
