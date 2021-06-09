@@ -12,5 +12,5 @@ AND orm.order_type NOT LIKE 'SM%'
 AND imp.dateTimeInserted  >= CAST(CONVERT(VARCHAR(10), GETDATE()-1,101) + ' 13:00:00' AS DATETIME)
 AND imp.dateTimeInserted <= CAST(CONVERT(VARCHAR(10), GETDATE(), 101) + ' 13:10:00' AS DATETIME)
 AND imp.importStatus not in ('E')
-AND orm.status NOT LIKE 'RAT%'
+AND orm.status NOT IN ('RATEFAIL', 'RATING')
 GROUP BY orm.status
