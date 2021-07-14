@@ -61,3 +61,4 @@ LEFT OUTER JOIN t_order_detail ord WITH (NOLOCK)
 WHERE orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'PROCESSING', 'SHIPPING', 'ERROR')
      AND orm.order_type NOT IN ('RT','RTV','SM', 'Transfer order')
      AND ord.qty > (ISNULL(ord.cancel_qty,0) + ISNULL(ord.bo_qty,0))
+     
