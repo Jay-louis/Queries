@@ -1,11 +1,12 @@
 DECLARE @odate AS DATE
-SET @odate = '2021-04-01' -- Change Date Here --
+SET @odate = '2021-08-06' -- Change Date Here --
 
 
 SELECT	CAST(orm.order_date AS DATE) "order_date"
 		  , count(DISTINCT orm.order_number) AS 'order_count'
 		  , ISNULL(COUNT(pck.line_number), 0) AS 'Pick Qty'
           , orm.status
+		  
 		  
 FROM t_order orm WITH(NOLOCK)
    JOIN t_import_order imp WITH(NOLOCK)
@@ -23,7 +24,9 @@ SELECT a.*
 FROM (SELECT orm.order_number, ISNULL(COUNT(pck.line_number), 0) AS 'Pick Qty'
           , orm.status, orm.order_date, orm.carrier_code as "o.carrier", imp.carrier_code, isnull(cfm.Matched_Date, Null) as "COFE Matched Date"
 		  ,row_number() OVER(PARTITION BY orm.order_number, cfm.Order_Number ORDER BY isnull(cfm.Matched_Date, Null) DESC) AS row_num
-		  , imp.order_type as "imp_carrier"
+		  , imp.order_type as "order_type"
+		  , CONCAT('''',orm.order_number, '''',',') as "SQL"
+		  , CONCAT(orm.order_number,',') as "ZP"
 FROM t_order orm WITH(NOLOCK)
    JOIN t_import_order imp WITH(NOLOCK)
         ON orm.order_number = imp.order_number
