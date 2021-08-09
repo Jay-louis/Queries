@@ -1,0 +1,8 @@
+--Lookup By ILPN--
+SELECT CAST(ord.order_date as DATE) order_date, ord.status AS "Order Status", pdt.order_number, pdt.item_number, pdt.status, pdt.container_id, ilpn, pick_id, ROW_NUMBER() OVER (PARTITION BY ilpn order by pdt.item_number)
+ 			AS duplicates
+FROM t_pick_detail pdt WITH(NOLOCK)
+JOIN t_order ord WITH(NOLOCK) ON pdt.order_number = ord.order_number
+WHERE --ord.order_number = '64564287'
+
+ilpn IN ('P147783863')
