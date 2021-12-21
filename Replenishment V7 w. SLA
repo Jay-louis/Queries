@@ -13,12 +13,12 @@ DECLARE @SLAON AS INT
 
 
 SET @multiplier = '1'
-SET @SLA = '2021-03-11 07:25:28.000'
+SET @SLA = '2021-12-07 16:00:00.000'
 SET @SLAON = 0 --IF THIS IS 1, @SLA must be changed above based on latest_ship_date/priority query as well as the COFE Dates Below*/ -- IF THIS IS 0, change the date ranges below like normal.
 
 -- Input the date Ranges and Proactive Below instead of the end --
-SET @HJStart = '2021-03-27' /* <<< HJ Start Date*/ SET @HJEnd = '2021-04-01' /* <<< HJ End Date*/
-SET @CFStart = '2021-03-27' /* <<< COFE Start Date*/ SET @CFEnd = '2021-04-01' /* <<< COFE End Date*/
+SET @HJStart = '2021-12-16' /* <<< HJ Start Date*/ SET @HJEnd = '2021-12-16' /* <<< HJ End Date*/
+SET @CFStart = '2021-12-25' /* <<< COFE Start Date*/ SET @CFEnd = '2021-12-26' /* <<< COFE End Date*/
 SET @proactive = '0' -- Proactive Number --
 SET @building1 = 'BS-%' /* Parameter for Buildings */  SET @building2 = 'RB-%' --Example: Building1 = RB and Building 2 = RB Only RIM--
 
@@ -140,7 +140,7 @@ left join t_import_order io (nolock) on io.order_number = ord.order_number and (
 		)
 	   )
 		and orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'PROCESSING', 'SHIPPING')
-		and orm.order_type in ('ECOM', 'SM', 'EO')
+		and orm.order_type in ('ECOM', 'SM', 'EO', 'RT', 'Sales Order', 'Transfer Order')
 		) a1
 group by item_number) a2
 where order_qty - picked_qty > 0
@@ -282,7 +282,7 @@ left join t_import_order io (nolock) on io.order_number = ord.order_number and (
 		)
 	   )
 		and orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'PROCESSING', 'SHIPPING')
-		and orm.order_type in ('ECOM', 'SM', 'EO')
+		and orm.order_type in ('ECOM', 'SM', 'EO', 'RT', 'Sales Order', 'Transfer Order')
 		) a1
 group by item_number) a2
 where order_qty - picked_qty > 0
