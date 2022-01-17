@@ -1,0 +1,47 @@
+--Lookup Order Information--
+
+DECLARE @onumlook as nvarchar(15)
+
+
+--First Part looking up order detail using ILPN and dropping into temp table--
+SET @onumlook = '88520874' -- insert Order # here--
+
+SELECT 	 CASE WHEN imp.carrier_code = 'INS' and imp.pre_paid = 'Y' THEN 'Economy Paid'
+			  WHEN imp.carrier_code = 'INS' and imp.pre_paid = 'N' THEN 'Economy Unpaid'
+			  WHEN imp.carrier_code = 'INE' and imp.pre_paid = 'N' THEN 'Priority Unpaid'
+			  WHEN imp.carrier_code = 'INE' and imp.pre_paid = 'Y' THEN 'Priority Paid'
+			  WHEN imp.carrier_code = '2DAY' THEN 'FDE2'
+			  WHEN imp.carrier_code = '1DAY' THEN 'FDE1/P'
+			  WHEN imp.carrier_code = 'STND' THEN 'DHLOLB or DHLDOM'
+		 END AS carrier_type,
+
+o.carrier_code order_carrier_code , o.order_number,CAST(o.order_date as DATE) order_date, o.ship_to_name, o.ship_to_addr1, o.ship_to_addr2, o.ship_to_city, o.ship_to_state,
+	   o.ship_to_zip, o.ship_to_country_code, o.ship_to_country_name, o.ship_to_phone, o.status, o.order_type, o.customer_name, p.item_number, ISNULL(p.ilpn, NULL) ILPN, imp.pre_paid, imp.carrier_code import_carrier_code
+
+		 into #orm
+FROM t_order o WITH(NOLOCK)
+LEFT JOIN t_pick_detail p WITH(NOLOCK) ON o.order_number = p.order_number
+LEFT JOIN t_import_order imp WITH(NOLOCK) ON o.order_number = imp.order_number
+
+WHERE o.order_number = @onumlook
+
+
+--pulling results from temp table--
+select * from #orm o (nolock)
+
+--Pulling the pick details using the pulled order number from temp table--
+SELECT a.* FROM
+
+(SELECT ord.carrier_code, CAST(ord.order_date as DATE) order_date, ord.status AS "Order Status", pdt.order_number, pdt.item_number, pdt.status, pdt.container_id, ilpn, ISNULL(pick_id, NULL) pick_id,
+ISNULL(ROW_NUMBER() OVER (PARTITION BY ilpn order by pdt.item_number), NULL)
+ 			AS duplicates, CONCAT('''',ilpn,'''',',') as "sql"
+FROM t_pick_detail pdt WITH(NOLOCK)
+JOIN t_order ord WITH(NOLOCK) ON pdt.order_number = ord.order_number
+WHERE ord.order_number = @onumlook
+)a
+
+WHERE a.duplicates >= 1
+ORDER BY ilpn DESC
+
+
+DROP TABLE #orm
