@@ -1,0 +1,15 @@
+--Table start-
+SELECT Order_Number, EventType, SKU, MAX(CONVERT(varchar(25), DateTime, 100)) "datetime", LPN
+INTO #oce
+FROM OutCofeEvents WITH(NOLOCK)
+WHERE EventType IN ('CartonPick', 'Repick')
+GROUP BY Order_Number, EventType, SKU, LPN
+ORDER BY datetime DESC -- END of table
+
+--Main Query--
+SELECT pdt.order_number, pdt.pick_id, pdt.status, pdt.item_number, pdt.ilpn, oce.EventType, oce.datetime, oce.LPN "cofe ILPN" 
+FROM t_pick_detail pdt WITH(NOLOCK)
+JOIN #oce oce WITH(NOLOCK) on oce.Order_Number = pdt.order_number and oce.SKU = pdt.item_number
+WHERE pdt.order_number = '88664766' -- insert order # here --
+
+DROP TABLE #oce
