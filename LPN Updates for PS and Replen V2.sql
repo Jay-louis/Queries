@@ -83,7 +83,4 @@ left join t_employee e (nolock) on e.id = l.employee_id
 order by cast(CONVERT(varchar, DATEDIFF(MINUTE, dropped_time, getdate())) as int) desc
 
 
-SELECT * FROM #lpnupdate
-
-
 DROP TABLE #lpnupdate
