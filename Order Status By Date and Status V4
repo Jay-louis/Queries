@@ -1,10 +1,9 @@
 DECLARE @odate AS DATE
-SET @odate = '2021-08-06' -- Change Date Here --
-
+SET @odate = '2022-01-22' -- Change Date Here --
 
 SELECT	CAST(orm.order_date AS DATE) "order_date"
 		  , count(DISTINCT orm.order_number) AS 'order_count'
-		  , ISNULL(COUNT(pck.line_number), 0) AS 'Pick Qty'
+		  , ISNULL(SUM(pck.qty), 0) AS 'Pick Qty'
           , orm.status
 		  
 		  
@@ -17,20 +16,28 @@ WHERE orm.order_number NOT LIKE 'SO%'-- would like to change this to orm.order_t
 AND orm.order_type NOT IN ('RT','RTV','SM', 'Transfer Order')
 AND imp.importStatus not in ('E')
 AND CAST(orm.order_date AS DATE) = @odate
-AND pck.qty > (ISNULL(pck.cancel_qty,0) + ISNULL(pck.bo_qty,0))
 group by orm.status, CAST(orm.order_date as DATE)
 
-SELECT a.*
-FROM (SELECT orm.order_number, ISNULL(COUNT(pck.line_number), 0) AS 'Pick Qty'
+--2nd Part of Query--
+SELECT a.*, CASE WHEN [Pick Qty] = '1' THEN 'Single' ELSE 'Multi' END AS 'M/S'
+FROM (SELECT orm.order_number, SUM(pck.qty) AS 'Pick Qty'
           , orm.status, orm.order_date, orm.carrier_code as "o.carrier", imp.carrier_code, isnull(cfm.Matched_Date, Null) as "COFE Matched Date"
 		  ,row_number() OVER(PARTITION BY orm.order_number, cfm.Order_Number ORDER BY isnull(cfm.Matched_Date, Null) DESC) AS row_num
 		  , imp.order_type as "order_type"
 		  , CONCAT('''',orm.order_number, '''',',') as "SQL"
 		  , CONCAT(orm.order_number,',') as "ZP"
+	,CASE WHEN wcs_status = 'A' then 'Prioritized'
+	 WHEN wcs_status = 'R' then 'Released'
+	 WHEN wcs_status = 'S' then 'Sorter Chute'
+	 WHEN wcs_status = 'M' AND SUM(pck.qty) > '1' then 'Matching'
+	 WHEN wcs_status = 'P' then 'Problem Res'
+	 WHEN wcs_status IN ('C','M') AND SUM(pck.qty) <= '1'  then 'Complete'
+	 WHEN wcs_status = 'C'  then 'Complete' END as COFE_Status
+
 FROM t_order orm WITH(NOLOCK)
    JOIN t_import_order imp WITH(NOLOCK)
         ON orm.order_number = imp.order_number
-	JOIN t_order_detail pck WITH(NOLOCK)
+	LEFT JOIN t_order_detail pck WITH(NOLOCK)
 		ON pck.order_number = orm.order_number
 	LEFT OUTER JOIN OutCofeOrderMasterMatched cfm WITH(NOLOCK) 
 		ON orm.order_number = cfm.Order_Number
@@ -39,9 +46,9 @@ AND orm.order_type NOT IN ('RT','RTV','SM', 'Transfer Order')
 AND CAST(orm.order_date AS DATE) = @odate
 AND imp.importStatus not in ('E')
 and orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S', 'PROCESSING', 'SHIPPING')
-AND pck.qty > (ISNULL(pck.cancel_qty,0) + ISNULL(pck.bo_qty,0))
-GROUP BY orm.order_number, orm.status, orm.order_date, orm.carrier_code, imp.carrier_code, cfm.Matched_Date, cfm.Order_Number, imp.order_type
+GROUP BY orm.order_number, orm.status, orm.order_date, orm.carrier_code, imp.carrier_code, cfm.Matched_Date, cfm.Order_Number, imp.order_type, wcs_status
 )a
 WHERE CAST(a.order_date AS DATE) = @odate
 AND row_num <= 1
+--AND [Pick Qty] >= 1
 ORDER BY a.[COFE Matched Date] DESC, a.order_number
