@@ -1,0 +1,6 @@
+SELECT order_number, order_date, order_type, status, CONCAT('''',order_number,''',') as "SQL"
+FROM t_order WITH(NOLOCK)
+WHERE order_number LIKE '%'
+AND status NOT IN ('SHIPPED', 'PACKED', 'CANCELLED', 'SHIPPING')
+AND order_type NOT IN ('ECOM', 'EMP', 'RTV', 'RT', 'SM')
+ORDER BY order_type
