@@ -1,4 +1,7 @@
-select min(order_number), max(order_number) from t_order o (nolock)
-where cast(order_date as date) = '2021-03-19' 
+--First and Last Order #s for Date--
+
+select min(order_number) "first order number", max(order_number) "last order number"
+from t_order o (nolock)
+where cast(order_date as date) = '2022-02-07' -- Change date here--
 and o.status not in ('SHIPPED', 'CANCELLED', 'PACKED', 'ERROR', 'PROCESSING', 'SHIPPING') 
 and order_number not like '%RTV%' and order_number not like '%TO%' and order_number not like '%SO%'
