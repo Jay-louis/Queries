@@ -1,0 +1,18 @@
+--Order Breakdown by Date/Status--
+select order_date, status, cast(count(order_number) as int) '# orders', cast(sum(units) as int) '# units' from
+(select 
+       CAST(orm.order_date AS DATE) AS order_date,
+       
+     orm.order_number AS order_number,
+	 orm.status,
+	  (select sum(qty) from t_order_detail d (nolock) where d.order_number = orm.order_number) units
+from t_order orm (nolock)
+join t_import_order imp (nolock)
+on orm.order_number = imp.order_number and importStatus <> 'E'
+ WHERE orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S','PROCESSING','SHIPPING')
+ AND orm.order_type NOT IN ('RT','RTV', 'Transer Order','SM')) a
+GROUP BY 
+order_date,
+status
+ORDER BY
+order_date asc
