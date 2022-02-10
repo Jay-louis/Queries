@@ -1,0 +1,79 @@
+--Packed Units By Hour--
+
+--Before Midnight -- NO NEED TO SWITCH --
+DECLARE @startdate AS DATETIME
+DECLARE @enddate AS DATETIME
+SET @startdate = CAST(CONVERT(VARCHAR(10), GETDATE(), 101) + ' 17:00:00' AS DATETIME)
+SET @enddate = CAST(CONVERT(VARCHAR(10), GETDATE()+1, 101) + ' 04:00:00' AS DATETIME)
+
+
+--After Midnight -- NO NEED TO SWITCH --
+DECLARE @amidnightstart AS DATETIME
+DECLARE @amidnightend AS DATETIME
+SET @amidnightstart = CAST(CONVERT(VARCHAR(10), GETDATE()-1, 101) + ' 17:00:00' AS DATETIME)
+SET @amidnightend = CAST(CONVERT(VARCHAR(10), GETDATE(), 101) + ' 04:00:00' AS DATETIME)
+
+DECLARE @aftermidnight AS INT
+
+--Value to run--
+SET @aftermidnight = 0 -- Run 1 if running after midnight -- Run 0 if before midnight --
+
+--Main Queries Below--
+
+--Before Midnight--
+If @aftermidnight = 0 -- Do Not Switch --
+
+BEGIN
+SELECT CAST(a.datetime AS DATE) AS 'Date'
+    , DATEPART(HOUR, a.datetime) AS 'Hour'
+	, SUM(a.unit_count) AS 'Units Packed'
+    , SUM(a.order_count) AS 'Orders Packed'
+FROM(
+SELECT CAST(end_tran_date as datetime) + CAST(end_tran_time as DATETIME) as datetime, COUNT(DISTINCT trl.order_number) order_count, COUNT(DISTINCT det.ilpn) unit_count
+from t_tran_log trl WITH(NOLOCK)
+join t_order orm WITH(NOLOCK)
+on orm.order_number = trl.order_number
+left outer join t_pick_detail det WITH(NOLOCK)
+on orm.order_number = det.order_number
+AND trl.line_number = det.line_number
+AND det.packed_quantity > 0
+where trl.tran_type = '317'
+AND orm.order_type NOT IN ('RTV')
+AND orm.status NOT IN ('CANCELLED','ERROR')
+GROUP BY CAST(end_tran_date as datetime) + CAST(end_tran_time as DATETIME))a
+
+WHERE CAST(a.datetime as datetime) BETWEEN @startdate and @enddate
+GROUP BY CAST(a.datetime as DATE), DATEPART(HOUR, a.datetime)
+ORDER BY DATEPART(HOUR, a.datetime)
+
+END
+
+
+--After Midnight--
+IF @aftermidnight = 1
+
+BEGIN
+SELECT CAST(a.datetime AS DATE) AS 'Date'
+    , DATEPART(HOUR, a.datetime) AS 'Hour'
+	, SUM(a.unit_count) AS 'Units Packed'
+    , SUM(a.order_count) AS 'Orders Packed'
+FROM(
+SELECT CAST(end_tran_date as datetime) + CAST(end_tran_time as DATETIME) as datetime, COUNT(DISTINCT trl.order_number) order_count, COUNT(DISTINCT det.ilpn) unit_count
+from t_tran_log trl WITH(NOLOCK)
+join t_order orm WITH(NOLOCK)
+on orm.order_number = trl.order_number
+left outer join t_pick_detail det WITH(NOLOCK)
+on orm.order_number = det.order_number
+AND trl.line_number = det.line_number
+AND det.packed_quantity > 0
+where trl.tran_type = '317'
+AND orm.order_type NOT IN ('RTV')
+AND orm.status NOT IN ('CANCELLED','ERROR')
+GROUP BY CAST(end_tran_date as datetime) + CAST(end_tran_time as DATETIME))a
+
+WHERE CAST(a.datetime as datetime) BETWEEN @amidnightstart and @amidnightend
+GROUP BY CAST(a.datetime as DATE), DATEPART(HOUR, a.datetime)
+ORDER BY DATEPART(HOUR, a.datetime)
+
+END
+
