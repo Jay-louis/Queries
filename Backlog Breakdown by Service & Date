@@ -1,0 +1,51 @@
+select order_date, carrier_code 'service' , cast(count(order_number) as int) '# orders', cast(sum(units) as int) '# units' from
+(select 
+       CAST(orm.order_date AS DATE) AS order_date,
+       imp.carrier_code carrier_code,
+     orm.order_number AS order_number, orm.status,
+
+	  (select sum(qty) from t_order_detail d (nolock) where d.order_number = orm.order_number) units
+
+from t_order orm (nolock)
+join t_import_order imp (nolock)
+on orm.order_number = imp.order_number and importStatus <> 'E'
+ WHERE orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S','PROCESSING','SHIPPING')
+      AND orm.order_type NOT IN ('RT','RTV','SM')
+      AND imp.carrier_code NOT IN ('INE','EO','INS')
+	  GROUP BY orm.order_date,imp.order_date, imp.carrier_code, orm.order_number, orm.status) a
+GROUP BY 
+order_date,
+carrier_code
+
+ORDER BY
+order_date asc,
+carrier_code asc
+
+
+
+select CAST(order_date as DATE) as "order_date",
+sum(case when a.carrier_code IN ('STND','EO','INS_PP', 'INS_UP') then 1 else 0 end) 'STND',
+sum(case when a.carrier_code IN ('1DAY', 'INE_UP', 'INE_PP' ) then 1 else 0 end) '1DAY',
+sum(case when a.carrier_code = '2DAY' then 1 else 0 end) '2DAY',
+CAST(count(order_number) as int) order_count,
+cast(sum(units) as int) '# units' from
+(select 
+       CAST(orm.order_date AS DATE) AS order_date,
+       imp.carrier_code carrier_code,
+     orm.order_number AS order_number, orm.status,
+
+	  (select sum(qty) from t_order_detail d (nolock) where d.order_number = orm.order_number) units
+
+from t_order orm (nolock)
+join t_import_order imp (nolock)
+on orm.order_number = imp.order_number and importStatus <> 'E'
+ WHERE orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S','PROCESSING','SHIPPING')
+      AND orm.order_type NOT IN ('RT','RTV','SM')
+      --AND imp.carrier_code NOT IN ('EO')
+	  GROUP BY CAST(orm.order_date as DATE),CAST(imp.order_date as DATE), imp.carrier_code, orm.order_number, orm.status) a
+GROUP BY 
+CAST(order_date as DATE)
+
+ORDER BY
+order_date asc
+
