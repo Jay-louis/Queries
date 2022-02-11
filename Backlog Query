@@ -44,7 +44,7 @@ left outer join (select cast(convert(char(11), imp2.order_date, 113) as datetime
 		ON cast(convert(char(11), orm.order_date, 113) as datetime) = prob.Prob_orderdate 
 
 WHERE --orm.status NOT IN ('SHIPPED','CANCELLED','PACKED','LOADED','S')
-      orm.order_type NOT IN ('RT','RTV', 'Transer Order')
+      orm.order_type NOT IN ('RT','RTV', 'Transfer Order')
       --AND ord.qty > (ISNULL(ord.cancel_qty,0) + ISNULL(ord.bo_qty,0))
 GROUP BY CAST(orm.order_date AS DATE), bklg.backlog, prob.ProblemOrders ,back.BacklogOrders,back.BackUnits
 HAVING back.BacklogOrders > 0 OR bklg.backlog > 0
