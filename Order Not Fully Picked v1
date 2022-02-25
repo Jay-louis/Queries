@@ -1,0 +1,25 @@
+--Table start--
+SELECT Order_Number, EventType, SKU, MAX(CONVERT(varchar(25), DateTime, 100)) "datetime", LPN
+INTO #oce
+FROM OutCofeEvents WITH(NOLOCK)
+WHERE EventType IN ('CartonPick', 'Repick')
+GROUP BY Order_Number, EventType, SKU, LPN
+ORDER BY datetime DESC -- END of table
+
+--Main Query--
+SELECT pdt.order_number, pdt.pick_id, pdt.status, pdt.item_number, pdt.ilpn, oce.LPN "cofe ILPN", oce.EventType, oce.datetime , CONCAT('''',ilpn,'''',',') as "sql", pdt.container_id
+FROM t_pick_detail pdt WITH(NOLOCK)
+JOIN #oce oce WITH(NOLOCK) on oce.Order_Number = pdt.order_number and oce.SKU = pdt.item_number
+WHERE pdt.order_number IN ('90867386') -- insert order # here --
+AND ilpn IS NULL
+
+DROP TABLE #oce
+--End of Line--
+
+
+-- Double ILPN Check--
+SELECT pdt.order_number, pdt.pick_id, pdt.status, pdt.item_number, pdt.ilpn, ROW_NUMBER() OVER (PARTITION BY ilpn order by pdt.item_number) "Duplicate Lines", pdt.container_id
+FROM t_pick_detail pdt WITH(NOLOCK)
+WHERE pdt.ilpn  LIKE  ('P129811620%')-- insert ILPNs here --*/
+
+--End Line--
